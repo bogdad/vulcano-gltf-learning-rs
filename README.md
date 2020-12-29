@@ -2,8 +2,8 @@
 [https://github.com/bogdad/vulkano-gltf-learning-rs](https://github.com/bogdad/vulkano-gltf-learning-rs)
 
 ## Questions:
-- how do vertex normals work
-+ how do coordinate systems work
+- [ ] how do vertex normals work
+- [x] how do coordinate systems work
 
 
 ## Coordinate systems:
