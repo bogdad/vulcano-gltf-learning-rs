@@ -1,5 +1,5 @@
-#  vulcano-gltf-learning-rs 
-[https://github.com/bogdad/vulcano-gltf-learning-rs](https://github.com/bogdad/vulcano-gltf-learning-rs)
+# vulkano-gltf-learning-rs
+[https://github.com/bogdad/vulkano-gltf-learning-rs](https://github.com/bogdad/vulkano-gltf-learning-rs)
 
 ## Questions:
 - how do vertex normals work
@@ -9,9 +9,12 @@
 ## Coordinate systems:
 Gltf default camera: “and the default camera sits on the -Z side looking toward the origin with +Y up”
 
+![screenshot](./images/2.png)
 
 (Dimensions of the box (x:1 y:4 z:16)
 But:
+
+![screenshot](./images/3.png)
 
 I.e. blender gltf export swaps y and z. Weird.
 
