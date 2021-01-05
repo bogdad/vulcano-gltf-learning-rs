@@ -154,12 +154,13 @@ fn main() {
     };
 
     let models = vec![
-        //Model::from_gltf(Path::new("creature.glb"), &device),
-        //Model::from_gltf(Path::new("creature2.glb"), &device),
-        //Model::from_gltf(Path::new("creature3.glb"), &device),
-        //Model::from_gltf(Path::new("dog.glb"), &device),
-        Model::from_gltf(Path::new("box.glb"), &device),
-        Model::from_gltf(Path::new("center.glb"), &device),
+        //Model::from_gltf(Path::new("models/creature.glb"), &device),
+        //Model::from_gltf(Path::new("models/creature2.glb"), &device),
+        //Model::from_gltf(Path::new("models/creature3.glb"), &device),
+        Model::from_gltf(Path::new("models/landscape.glb"), &device),
+        Model::from_gltf(Path::new("models/dog.glb"), &device),
+        //Model::from_gltf(Path::new("models/box.glb"), &device),
+        //Model::from_gltf(Path::new("models/center.glb"), &device),
     ];
     
 
@@ -174,7 +175,7 @@ fn main() {
     // "and the default camera sits on the 
     // -Z side looking toward the origin with +Y up"
     //                               x     y    z
-    let mut camera_pos = Point3::new(0.0, 0.0, -1.0);                          
+    let mut camera_pos = Point3::new(0.0, -0.2, -1.0);                          
     let camera_front = Vector3::new(0.0, 0.0, 1.0);
     let camera_up = Vector3::new(0.0, 1.0, 0.0);
 
@@ -274,19 +275,22 @@ fn main() {
             }
             let uniform_buffer_subbuffer = {
                 let elapsed = rotation_start.elapsed();
-                let rotation = 
-                    elapsed.as_secs() as f64 + elapsed.subsec_nanos() as f64 / 1_000_000_000.0;
+                let rotation = 0;
+                    //elapsed.as_secs() as f64 + elapsed.subsec_nanos() as f64 / 1_000_000_000.0;
                 let rotation = Matrix3::from_angle_y(Rad(rotation as f32));
 
                 // note: this teapot was meant for OpenGL where the origin is at the lower left
                 //       instead the origin is at the upper left in Vulkan, so we reverse the Y axis
                 let aspect_ratio = dimensions[0] as f32 / dimensions[1] as f32;
-                let proj = cgmath::perspective(
+                let mut proj = cgmath::perspective(
                     Rad(std::f32::consts::FRAC_PI_2),
                     aspect_ratio,
                     0.01,
                     100.0,
                 );
+
+                // flipping the "horizontal" projection bit
+                proj[0][0] = -proj[0][0];
                 
                 let target = camera_pos.to_vec() + camera_front;
 
