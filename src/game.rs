@@ -61,43 +61,59 @@ impl Camera {
 
 pub struct Game {
     graph: Graph,
+    camera: Camera,
+    recreate_swapchain: bool,
+    models: Vec<Model>,
+    uniform_buffer: CpuBufferPool<vs::ty::Data>,
+    previous_frame_end: Option<Box<dyn GpuFuture>>,
+    rotation_start: Instant,
 }
 
 impl Game {
 
-
-pub fn gloop(&mut self, event_loop: EventLoop<()>) {
-
-    // gltf: 
+pub fn new(graph: Graph) -> Game {
+        // gltf: 
     // "and the default camera sits on the 
     // -Z side looking toward the origin with +Y up"
     //                               x     y    z
-    let mut camera = Camera {
+    let camera = Camera {
         pos: Point3::new(0.0, -0.2, -1.0),
         front: Vector3::new(0.0, 0.0, 1.0),
         up: Vector3::new(0.0, 1.0, 0.0),
     };
 
 
-	let mut recreate_swapchain = false;
-	let mut previous_frame_end = Some(sync::now(self.graph.device.clone()).boxed());
+    let recreate_swapchain = false;
+    let previous_frame_end = Some(sync::now(graph.device.clone()).boxed());
 
     let rotation_start = Instant::now();
-	
+    
     let models = vec![
         //Model::from_gltf(Path::new("models/creature.glb"), &device),
         //Model::from_gltf(Path::new("models/creature2.glb"), &device),
         //Model::from_gltf(Path::new("models/creature3.glb"), &device),
-        Model::from_gltf(Path::new("models/landscape.glb"), &self.graph.device),
-        Model::from_gltf(Path::new("models/dog.glb"), &self.graph.device),
+        Model::from_gltf(Path::new("models/landscape.glb"), &graph.device),
+        Model::from_gltf(Path::new("models/dog.glb"), &graph.device),
         //Model::from_gltf(Path::new("models/box.glb"), &device),
         //Model::from_gltf(Path::new("models/center.glb"), &device),
     ];
 
 
-    let uniform_buffer = CpuBufferPool::<vs::ty::Data>::new(self.graph.device.clone(), BufferUsage::all());
+    let uniform_buffer = CpuBufferPool::<vs::ty::Data>::new(graph.device.clone(), BufferUsage::all());
 
-    event_loop.run(move |event, _, control_flow| match event {
+    Game {
+        graph: graph,
+        camera:camera,
+        recreate_swapchain: recreate_swapchain,
+        models: models,
+        uniform_buffer: uniform_buffer,
+        previous_frame_end: previous_frame_end,
+        rotation_start: rotation_start,
+    }
+}
+
+pub fn gloop(&mut self, event: Event<()>, control_flow: &mut ControlFlow) {
+    match event {
         Event::WindowEvent {
             event: WindowEvent::CloseRequested,
             ..
@@ -108,23 +124,23 @@ pub fn gloop(&mut self, event_loop: EventLoop<()>) {
             event: WindowEvent::Resized(_),
             ..
         } => {
-            recreate_swapchain = true;
+            self.recreate_swapchain = true;
         }
         Event::WindowEvent {
              event: WindowEvent::KeyboardInput { input: input, ..},
              ..
         } => {
-            camera.react(&input);
+            self.camera.react(&input);
         }
         Event::RedrawEventsCleared => {
-            previous_frame_end.as_mut().unwrap().cleanup_finished();
+            self.previous_frame_end.as_mut().unwrap().cleanup_finished();
 
-            if recreate_swapchain {
+            if self.recreate_swapchain {
                 self.graph.recreate_swapchain();
-                recreate_swapchain = false;
+                self.recreate_swapchain = false;
             }
             let uniform_buffer_subbuffer = {
-                let _elapsed = rotation_start.elapsed();
+                let _elapsed = self.rotation_start.elapsed();
                 let rotation = 0;
                     //elapsed.as_secs() as f64 + elapsed.subsec_nanos() as f64 / 1_000_000_000.0;
                 let rotation = Matrix3::from_angle_y(Rad(rotation as f32));
@@ -142,10 +158,10 @@ pub fn gloop(&mut self, event_loop: EventLoop<()>) {
                 // flipping the "horizontal" projection bit
                 proj[0][0] = -proj[0][0];
                 
-                let target = camera.pos.to_vec() + camera.front;
+                let target = self.camera.pos.to_vec() + self.camera.front;
 
                 let view = Matrix4::look_at(
-                    camera.pos, Point3::from_vec(target), camera.up
+                    self.camera.pos, Point3::from_vec(target), self.camera.up
                 );
                 let scale = Matrix4::from_scale(0.01);
                 /*
@@ -161,7 +177,7 @@ pub fn gloop(&mut self, event_loop: EventLoop<()>) {
                     proj: proj.into(),
                 };
 
-                uniform_buffer.next(uniform_data).unwrap()
+                self.uniform_buffer.next(uniform_data).unwrap()
             };
             let layout = self.graph.pipeline.descriptor_set_layout(0).unwrap();
             let set = Arc::new(
@@ -176,14 +192,14 @@ pub fn gloop(&mut self, event_loop: EventLoop<()>) {
                 match swapchain::acquire_next_image(self.graph.swapchain.clone(), None) {
                     Ok(r) => r,
                     Err(AcquireError::OutOfDate) => {
-                        recreate_swapchain = true;
+                        self.recreate_swapchain = true;
                         return;
                     }
                     Err(e) => panic!("Failed to acquire next image: {:?}", e),
                 };
 
             if suboptimal {
-                recreate_swapchain = true;
+                self.recreate_swapchain = true;
             }
 
             let mut builder =
@@ -197,7 +213,7 @@ pub fn gloop(&mut self, event_loop: EventLoop<()>) {
                     vec![[0.0, 0.0, 0.0, 1.0].into(), 1f32.into()],
                 )
                 .unwrap();
-            for model in &models {
+            for model in &self.models {
                 model.draw_indexed(&mut builder, self.graph.pipeline.clone(), set.clone())
             }
             
@@ -205,7 +221,7 @@ pub fn gloop(&mut self, event_loop: EventLoop<()>) {
                 .unwrap();
             let command_buffer = builder.build().unwrap();
 
-            let future = previous_frame_end
+            let future = self.previous_frame_end
                 .take()
                 .unwrap()
                 .join(acquire_future)
@@ -216,20 +232,20 @@ pub fn gloop(&mut self, event_loop: EventLoop<()>) {
 
             match future {
                 Ok(future) => {
-                    previous_frame_end = Some(future.boxed());
+                    self.previous_frame_end = Some(future.boxed());
                 }
                 Err(FlushError::OutOfDate) => {
-                    recreate_swapchain = true;
-                    previous_frame_end = Some(sync::now(self.graph.device.clone()).boxed());
+                    self.recreate_swapchain = true;
+                    self.previous_frame_end = Some(sync::now(self.graph.device.clone()).boxed());
                 }
                 Err(e) => {
                     println!("Failed to flush future: {:?}", e);
-                    previous_frame_end = Some(sync::now(self.graph.device.clone()).boxed());
+                    self.previous_frame_end = Some(sync::now(self.graph.device.clone()).boxed());
                 }
             }
         }
         _ => (),
-    });
+    }
 }
 
 

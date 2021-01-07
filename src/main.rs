@@ -93,7 +93,7 @@ void main() {
 }
 
 
-struct Graph {
+pub struct Graph {
     instance: Arc<Instance>,
     surface: Arc<Surface<Window>>,
     dimensions: [u32; 2],
@@ -264,10 +264,8 @@ fn main() {
         reference: None,
     };*/
 
-    let mut game = Game{ 
-        graph: graph,
-    };
-    game.gloop(event_loop);
+    let mut game = Game::new(graph);
+    event_loop.run(move |event, _, mut control_flow| game.gloop(event, &mut control_flow));
 }
 
 fn window_size_dependent_setup(
