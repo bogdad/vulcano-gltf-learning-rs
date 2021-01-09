@@ -1,20 +1,18 @@
-use vulkano::instance::{Instance, PhysicalDevice};
 use vulkano::device::{Device, DeviceExtensions, Queue};
-
-use vulkano_win::VkSurfaceBuild;
+use vulkano::image::{ImageUsage, SwapchainImage, AttachmentImage};
+use vulkano::instance::{Instance, PhysicalDevice, PhysicalDeviceType};
+use vulkano::format::Format;
+use vulkano::framebuffer::{Framebuffer, FramebufferAbstract, RenderPassAbstract, Subpass};
+use vulkano::pipeline::viewport::Viewport;
+use vulkano::pipeline::vertex::TwoBuffersDefinition;
+use vulkano::pipeline::{GraphicsPipeline, GraphicsPipelineAbstract};
 
 use vulkano::swapchain::{
     ColorSpace, FullscreenExclusive, PresentMode, Surface, SurfaceTransform, Swapchain,
     SwapchainCreationError,
 };
 
-use vulkano::image::{ImageUsage, SwapchainImage, AttachmentImage};
-use vulkano::format::Format;
-
-use vulkano::pipeline::viewport::Viewport;
-use vulkano::pipeline::vertex::TwoBuffersDefinition;
-use vulkano::pipeline::{GraphicsPipeline, GraphicsPipelineAbstract};
-use vulkano::framebuffer::{Framebuffer, FramebufferAbstract, RenderPassAbstract, Subpass};
+use vulkano_win::VkSurfaceBuild;
 
 use winit::event_loop::{EventLoop};
 use winit::window::{Window, WindowBuilder};
@@ -118,7 +116,9 @@ impl Graph {
             .build_vk_surface(&event_loop, instance.clone())
             .unwrap();
         let dimensions: [u32; 2] = surface.window().inner_size().into();
-        let physical = PhysicalDevice::enumerate(&instance).next().unwrap();
+        let physical = PhysicalDevice::enumerate(&instance)
+            .filter(|device| device.ty() == PhysicalDeviceType::DiscreteGpu)
+            .next().unwrap();
         println!(
           "Using device: {} (type: {:?})",
           physical.name(),
