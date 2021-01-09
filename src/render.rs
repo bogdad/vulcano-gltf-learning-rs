@@ -115,7 +115,7 @@ impl MyMesh {
 
         let node: Node = d.nodes().filter(|node| node.mesh().is_some()).next().unwrap();
         let transform = Matrix4::from(node.transform().matrix());
-        let (translation, rotation, scale) = node.transform().decomposed();
+        // let (translation, rotation, scale) = node.transform().decomposed();
         // println!("t {:?} r {:?} s {:?}", translation, rotation, scale);
 
         return MyMesh::new(vertex, normals, index.unwrap(), transform);

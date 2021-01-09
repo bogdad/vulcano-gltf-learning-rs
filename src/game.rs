@@ -1,38 +1,30 @@
+use vulkano::swapchain;
+use vulkano::swapchain::{
+    AcquireError
+};
+use vulkano::descriptor::descriptor_set::PersistentDescriptorSet;
+use vulkano::buffer::cpu_pool::CpuBufferPool;
+use vulkano::buffer::{BufferUsage};
+
+use vulkano::command_buffer::{AutoCommandBufferBuilder, SubpassContents};
+use vulkano::sync;
+use vulkano::sync::{FlushError, GpuFuture};
+
+use winit::event_loop::ControlFlow;
+use winit::event::{Event, WindowEvent, KeyboardInput, VirtualKeyCode};
+
+use cgmath::prelude::*;
+use cgmath::{Matrix4, Matrix3, Vector3, Point3, Rad};
+
 use std::path::Path;
 use std::sync::Arc;
 use std::time::Instant;
 
 
-use winit::event_loop::{ControlFlow, EventLoop};
-use winit::window::{Window, WindowBuilder};
-use winit::event::{Event, WindowEvent, KeyboardInput, VirtualKeyCode};
-
-
-use vulkano::device::{Device, DeviceExtensions};
-use vulkano::swapchain;
-use vulkano::swapchain::{
-    AcquireError, ColorSpace, FullscreenExclusive, PresentMode, SurfaceTransform, Swapchain,
-    SwapchainCreationError,
-};
-use vulkano::descriptor::descriptor_set::PersistentDescriptorSet;
-use vulkano::buffer::cpu_pool::CpuBufferPool;
-use vulkano::buffer::{BufferUsage};
-use vulkano::framebuffer::{Framebuffer, FramebufferAbstract, RenderPassAbstract, Subpass};
-use vulkano::command_buffer::{AutoCommandBufferBuilder, SubpassContents};
-use vulkano::pipeline::viewport::Viewport;
-use vulkano::pipeline::vertex::TwoBuffersDefinition;
-use vulkano::pipeline::{GraphicsPipeline, GraphicsPipelineAbstract};
-use vulkano::sync;
-use vulkano::sync::{FlushError, GpuFuture};
-
-
-use cgmath::prelude::*;
-use cgmath::{Matrix4, Matrix3, Vector3, Point3, Rad};
-
 use crate::Graph;
 use crate::Model;
-use crate::fs;
 use crate::vs;
+
 
 
 
@@ -72,7 +64,7 @@ pub struct Game {
 impl Game {
 
 pub fn new(graph: Graph) -> Game {
-        // gltf: 
+    // gltf: 
     // "and the default camera sits on the 
     // -Z side looking toward the origin with +Y up"
     //                               x     y    z
@@ -112,29 +104,8 @@ pub fn new(graph: Graph) -> Game {
     }
 }
 
-pub fn gloop(&mut self, event: Event<()>, control_flow: &mut ControlFlow) {
-    match event {
-        Event::WindowEvent {
-            event: WindowEvent::CloseRequested,
-            ..
-        } => {
-            *control_flow = ControlFlow::Exit;
-        }
-        Event::WindowEvent {
-            event: WindowEvent::Resized(_),
-            ..
-        } => {
-            self.recreate_swapchain = true;
-        }
-        Event::WindowEvent {
-             event: WindowEvent::KeyboardInput { input: input, ..},
-             ..
-        } => {
-            self.camera.react(&input);
-        }
-        Event::RedrawEventsCleared => {
-            self.previous_frame_end.as_mut().unwrap().cleanup_finished();
-
+fn draw(&mut self) {
+    self.previous_frame_end.as_mut().unwrap().cleanup_finished();
             if self.recreate_swapchain {
                 self.graph.recreate_swapchain();
                 self.recreate_swapchain = false;
@@ -243,6 +214,34 @@ pub fn gloop(&mut self, event: Event<()>, control_flow: &mut ControlFlow) {
                     self.previous_frame_end = Some(sync::now(self.graph.device.clone()).boxed());
                 }
             }
+}
+
+
+
+
+
+pub fn gloop(&mut self, event: Event<()>, control_flow: &mut ControlFlow) {
+    match event {
+        Event::WindowEvent {
+            event: WindowEvent::CloseRequested,
+            ..
+        } => {
+            *control_flow = ControlFlow::Exit;
+        }
+        Event::WindowEvent {
+            event: WindowEvent::Resized(_),
+            ..
+        } => {
+            self.recreate_swapchain = true;
+        }
+        Event::WindowEvent {
+             event: WindowEvent::KeyboardInput { input, ..},
+             ..
+        } => {
+            self.camera.react(&input);
+        }
+        Event::RedrawEventsCleared => {
+            self.draw();
         }
         _ => (),
     }

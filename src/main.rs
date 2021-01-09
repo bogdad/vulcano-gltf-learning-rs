@@ -1,15 +1,13 @@
-use vulkano::instance::{Instance, PhysicalDevice, QueueFamily};
+use vulkano::instance::{Instance, PhysicalDevice};
 use vulkano::device::{Device, DeviceExtensions, Queue};
 
 use vulkano_win::VkSurfaceBuild;
 
-use vulkano::swapchain;
 use vulkano::swapchain::{
-    AcquireError, ColorSpace, FullscreenExclusive, PresentMode, Surface, SurfaceTransform, Swapchain,
+    ColorSpace, FullscreenExclusive, PresentMode, Surface, SurfaceTransform, Swapchain,
     SwapchainCreationError,
 };
-use vulkano::sync;
-use vulkano::sync::{FlushError, GpuFuture};
+
 use vulkano::image::{ImageUsage, SwapchainImage, AttachmentImage};
 use vulkano::format::Format;
 
@@ -17,20 +15,12 @@ use vulkano::pipeline::viewport::Viewport;
 use vulkano::pipeline::vertex::TwoBuffersDefinition;
 use vulkano::pipeline::{GraphicsPipeline, GraphicsPipelineAbstract};
 use vulkano::framebuffer::{Framebuffer, FramebufferAbstract, RenderPassAbstract, Subpass};
-use vulkano::command_buffer::{AutoCommandBufferBuilder, SubpassContents};
 
-use winit::event_loop::{ControlFlow, EventLoop};
+use winit::event_loop::{EventLoop};
 use winit::window::{Window, WindowBuilder};
-use winit::event::{Event, WindowEvent, KeyboardInput, VirtualKeyCode};
-
-use cgmath::prelude::*;
-use cgmath::{Matrix4, Matrix3, Vector3, Point3, Rad};
-
 
 use std::iter;
 use std::sync::Arc;
-use std::path::Path;
-use std::time::Instant;
 
 mod render;
 mod utils;
@@ -94,16 +84,11 @@ void main() {
 
 
 pub struct Graph {
-    instance: Arc<Instance>,
     surface: Arc<Surface<Window>>,
     dimensions: [u32; 2],
-    //physical: PhysicalDevice,
-    //queue_family: QueueFamily,
-    device_ext: DeviceExtensions,
     device: Arc<Device>,
     queue: Arc<Queue>,
     swapchain: Arc<Swapchain<Window>>,
-    images: Vec<Arc<SwapchainImage<Window>>>,
     render_pass: Arc<dyn RenderPassAbstract + Send + Sync>,
     vs: vs::Shader,
     fs: fs::Shader,
@@ -151,7 +136,7 @@ impl Graph {
             [(queue_family, 0.5)].iter().cloned(),
         ).unwrap();
         let queue = queues.next().unwrap();
-        let (mut swapchain, images) = {
+        let (swapchain, images) = {
             let caps = surface.capabilities(physical).unwrap();
             let alpha = caps.supported_composite_alpha.iter().next().unwrap();
             let format = caps.supported_formats[0].0;
@@ -205,20 +190,15 @@ impl Graph {
         //let tes = tes::Shader::load(device.clone()).unwrap();
         let fs = fs::Shader::load(device.clone()).unwrap();
         
-        let (mut pipeline, mut framebuffers) =
+        let (pipeline, framebuffers) =
             window_size_dependent_setup(device.clone(), &vs, &fs, &images, render_pass.clone());
 
         Graph {
-          instance: instance,
           surface: surface,
           dimensions: dimensions,
-          //physical: physical,
-          //queue_family: queue_family,
           device: device,
-          device_ext: device_ext,
           queue: queue,
           swapchain: swapchain,
-          images: images,
           render_pass: render_pass,
           vs,
           fs,
@@ -250,9 +230,8 @@ impl Graph {
 
 fn main() {
     println!("Hello, world!");
-    let required_extensions = vulkano_win::required_extensions();
     
-    let mut event_loop = EventLoop::new();
+    let event_loop = EventLoop::new();
     let graph = Graph::new(&event_loop);
 
     /*let dynamic_state = DynamicState {
