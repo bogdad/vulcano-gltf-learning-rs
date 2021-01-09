@@ -36,7 +36,7 @@ struct Camera {
 }
 impl Camera {
   pub fn react(self: &mut Camera, input: &KeyboardInput) {
-    if let &KeyboardInput{ virtual_keycode: Some(key_code), .. } = input {
+    if let KeyboardInput{ virtual_keycode: Some(key_code), .. } = input {
         let camera_speed = 0.25;
             let zz = self.front.cross(self.up).normalize();
             match key_code {
@@ -94,13 +94,13 @@ pub fn new(graph: Graph) -> Game {
     let uniform_buffer = CpuBufferPool::<vs::ty::Data>::new(graph.device.clone(), BufferUsage::all());
 
     Game {
-        graph: graph,
-        camera:camera,
-        recreate_swapchain: recreate_swapchain,
-        models: models,
-        uniform_buffer: uniform_buffer,
-        previous_frame_end: previous_frame_end,
-        rotation_start: rotation_start,
+        graph,
+        camera,
+        recreate_swapchain,
+        models,
+        uniform_buffer,
+        previous_frame_end,
+        rotation_start,
     }
 }
 

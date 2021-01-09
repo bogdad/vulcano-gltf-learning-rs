@@ -18,7 +18,7 @@ use crate::utils::{Vertex, Normal};
 
 pub struct MyMesh {
     pub vertex: Vec<Point3<f32>>,
-    pub normal: Vec<Point3<f32>>,
+    pub normals: Vec<Point3<f32>>,
     pub index: Vec<u32>,
     pub transform: Matrix4<f32>,
 }
@@ -34,9 +34,9 @@ impl Model {
                 normals: Arc<CpuAccessibleBuffer<[Normal]>>,
                 index: Arc<CpuAccessibleBuffer<[u32]>>) -> Model {
         Model {
-            vertex: vertex,
-            normals: normals,
-            index: index,
+            vertex,
+            normals,
+            index,
         }
     }
 
@@ -58,7 +58,7 @@ impl Model {
     }
 
     pub fn from_gltf(path: &Path, device: &Arc<Device>) -> Model {
-        return MyMesh::from_gltf(path).get_buffers(device);
+        MyMesh::from_gltf(path).get_buffers(device)
     }
 }
 
@@ -68,10 +68,10 @@ impl MyMesh {
            index: Vec<u32>,
            transform: Matrix4<f32>) -> MyMesh {
         MyMesh {
-            vertex: vertex,
-            normal: normals,
-            index: index,
-            transform: transform,
+            vertex,
+            normals,
+            index,
+            transform,
         }
     }
 
@@ -83,7 +83,7 @@ impl MyMesh {
         let vertex = {
             let iter = reader
                 .read_positions()
-                .expect(&format!(
+                .unwrap_or_else(||panic!(
                     "primitives must have the POSITION attribute (mesh: {}, primitive: {})",
                     mesh.index(), primitive.index()));
 
@@ -97,7 +97,7 @@ impl MyMesh {
         let normals = {
             let iter = reader
                 .read_normals()
-                .expect(&format!(
+                .unwrap_or_else(|| panic!(
                     "primitives must have the NORMALS attribute (mesh: {}, primitive: {})",
                     mesh.index(), primitive.index()));
             iter
@@ -113,12 +113,12 @@ impl MyMesh {
                 read_indices.into_u32().collect::<Vec<_>>()
             });
 
-        let node: Node = d.nodes().filter(|node| node.mesh().is_some()).next().unwrap();
+        let node: Node = d.nodes().find(|node| node.mesh().is_some()).unwrap();
         let transform = Matrix4::from(node.transform().matrix());
         // let (translation, rotation, scale) = node.transform().decomposed();
         // println!("t {:?} r {:?} s {:?}", translation, rotation, scale);
 
-        return MyMesh::new(vertex, normals, index.unwrap(), transform);
+        MyMesh::new(vertex, normals, index.unwrap(), transform)
     }
 
     pub fn get_buffers(&self, device: &Arc<Device>) -> Model {
@@ -127,7 +127,7 @@ impl MyMesh {
         .map(|pos| Vertex{position: (pos[0], pos[1], pos[2])}).collect();
         let vertices = vertices_vec.iter().cloned();
         let normals_vec: Vec<Normal> = 
-        self.normal.iter()
+        self.normals.iter()
         .map(|pos| self.transform.transform_point(*pos))
         .map(|pos| Normal{normal: (pos[0], pos[1], pos[2])})
         .collect();

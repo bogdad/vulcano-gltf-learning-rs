@@ -117,8 +117,8 @@ impl Graph {
             .unwrap();
         let dimensions: [u32; 2] = surface.window().inner_size().into();
         let physical = PhysicalDevice::enumerate(&instance)
-            .filter(|device| device.ty() == PhysicalDeviceType::DiscreteGpu)
-            .next().unwrap();
+            .find(|device| device.ty() == PhysicalDeviceType::DiscreteGpu)
+            .unwrap();
         println!(
           "Using device: {} (type: {:?})",
           physical.name(),
@@ -194,12 +194,12 @@ impl Graph {
             window_size_dependent_setup(device.clone(), &vs, &fs, &images, render_pass.clone());
 
         Graph {
-          surface: surface,
-          dimensions: dimensions,
-          device: device,
-          queue: queue,
-          swapchain: swapchain,
-          render_pass: render_pass,
+          surface,
+          dimensions,
+          device,
+          queue,
+          swapchain,
+          render_pass,
           vs,
           fs,
           pipeline,
@@ -207,7 +207,7 @@ impl Graph {
         }
     }
 
-    pub fn recreate_swapchain(self: &mut Self) {
+    pub fn recreate_swapchain(&mut self) {
         let dimensions: [u32; 2] = self.surface.window().inner_size().into();
         let (new_swapchain, new_images) =
             match self.swapchain.recreate_with_dimensions(dimensions) {
@@ -295,7 +295,7 @@ fn window_size_dependent_setup(
             .fragment_shader(fs.main_entry_point(), ())
             .depth_stencil_simple_depth()
             .render_pass(Subpass::from(render_pass.clone(), 0).unwrap())
-            .build(device.clone())
+            .build(device)
             .unwrap(),
     );
 
