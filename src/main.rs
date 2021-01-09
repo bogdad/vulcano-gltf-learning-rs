@@ -22,13 +22,15 @@ use std::sync::Arc;
 
 mod render;
 mod utils;
+mod hetero_terrain;
+mod terrain_generation;
+mod game;
 
 use render::Model;
 use utils::{Vertex, Normal};
-
-
-mod game;
 use game::Game;
+
+
 
 mod vs {
     vulkano_shaders::shader! {
