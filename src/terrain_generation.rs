@@ -2,9 +2,11 @@
 // into rust
 
 
-use genmesh::{Quad, Triangle, Polygon};
+use genmesh::{Quad, Triangle, Polygon, Triangulate, Vertices};
+
 use rand;
 use rand_distr::{UnitSphere, Distribution};
+use cgmath::prelude::*;
 use cgmath::{Point3, Matrix4};
 
 use crate::utils::{Vertex, Face};
@@ -129,7 +131,7 @@ options=[0,1.0,1, 0,0,1.0,0,6,1.0,2.0,1.0,2.0,0,0,0, 1.0,0.0,1,0.0,1.0,0,0,0]
     };
 
 	let ncoords = ( x / nsize + origin_x, y / nsize + origin_y, z / nsize + origin_z );
-	let value = hetero_terrain_new_perlin(ncoords.0, ncoords.1, ncoords.2, 
+	let mut value = hetero_terrain_new_perlin(ncoords.0, ncoords.1, ncoords.2, 
 		dimension/*-H*/, lacunarity, depth /* octaves */, offset, nbasis as i32 ) * 0.25;
 
 	value = value * height + heightoffset;
@@ -142,7 +144,7 @@ options=[0,1.0,1, 0,0,1.0,0,6,1.0,2.0,1.0,2.0,0,0,0, 1.0,0.0,1,0.0,1.0,0,0,0]
    	value
 }
 
-fn create_faces(vertIdx1: &Vec<i32>, vertIdx2: &Vec<i32>) -> Vec<Polygon<i32>> {
+fn create_faces(out_faces: &mut Vec<Face>, vertIdx1: &Vec<u32>, vertIdx2: &Vec<u32>) {
 	/*
 # A very simple "bridge" tool.
 # Connects two equally long vertex rows with faces.
@@ -212,7 +214,6 @@ def createFaces(vertIdx1, vertIdx2, closed=False, flipped=False):
 
     return faces
 */
-	let faces: Vec<Polygon<i32>> = vec![];
 	if vertIdx1.len() == 0 || vertIdx2.len() == 0 {
 		panic!("lengths should be positive but they are {:?} {:?}", vertIdx1.len(), vertIdx2.len());
 	}
@@ -229,19 +230,18 @@ def createFaces(vertIdx1, vertIdx2, closed=False, flipped=False):
     }
     let total = vertIdx2.len();
     if !fan {
-    	faces.push(Polygon::PolyQuad(Quad::new(vertIdx2[0], vertIdx1[0], vertIdx1[total - 1], vertIdx2[total - 1])));
+    	out_faces.push(Polygon::PolyQuad(Quad::new(vertIdx2[0], vertIdx1[0], vertIdx1[total - 1], vertIdx2[total - 1])));
     } else {
-    	faces.push(Polygon::PolyTri(Triangle::new(vertIdx2[0], vertIdx1[0], vertIdx2[total - 1])));
+    	out_faces.push(Polygon::PolyTri(Triangle::new(vertIdx2[0], vertIdx1[0], vertIdx2[total - 1])));
     }
     for num in 0..(total - 1) {
     	if fan {
-            faces.push(Polygon::PolyTri(Triangle::new(vertIdx1[0], vertIdx2[num], vertIdx2[num + 1])));
+            out_faces.push(Polygon::PolyTri(Triangle::new(vertIdx1[0], vertIdx2[num], vertIdx2[num + 1])));
     	} else {
-            faces.push(Polygon::PolyQuad(Quad::new(vertIdx1[num], vertIdx2[num],
+            out_faces.push(Polygon::PolyQuad(Quad::new(vertIdx1[num], vertIdx2[num],
                 vertIdx2[num + 1], vertIdx1[num + 1])));
     	}
     }
-    faces
 }
 
 
@@ -272,40 +272,43 @@ verts = []
 
     return verts, faces
 */
-	let verts: Vec<Vertex> = vec![];
-	let faces: Vec<Polygon<i32>> = vec![];
+	let mut verts: Vec<Vertex> = vec![];
+	let mut faces: Vec<Face> = vec![];
 	let delta = (mesh_size as f32)/ ((sub_division - 1) as f32);
 	let start = -(mesh_size / 2);
-	let mut edgeloop_prev: Vec<i32> = vec![];
+	let mut edgeloop_prev: Vec<u32> = vec![];
 	for row_x in 0..sub_division {
-		let edgeloop_cur: Vec<usize> = vec![];
+		let mut edgeloop_cur: Vec<u32> = vec![];
 		let x = (start as f32) + (row_x as f32) * delta;
 		for row_y in 0..sub_division {
 			let y = (start as f32) + (row_y as f32) * delta;
 			/* 
-			landscape_gen(x: f32, y:f32, z:f32,mesh_size: i32, 
-	rseed: i32, nsize: f32, depth: f32, dimension: f32, lacunarity: f32, 
-	offset: f32, invert: f32, height:f32, heightoffset:f32, sealevel: f32, platlevel: f32
+			
+        fn landscape_gen(x: f32, y:f32, z:f32,mesh_size: i32, 
+    rseed: i32, nsize: f32, nbasis: f32, depth: f32, dimension: f32, lacunarity: f32, 
+    offset: f32, invert: f32, height:f32, heightoffset:f32, sealevel: f32, platlevel: f32) -> f32 {
 	*/		
 			let nsize = 0.33;
+            let nbasis = 0.0;
 			let depth = 8.0;
 			let dimension = 0.95;
 			let lacunarity = 2.20;
 			let offset = 0.50;
 			let invert = 0.0;
 			let height = 0.23;
+            let heightoffset = 0.0;
 			let sealevel = -1.0;
 			let platlevel = 1.0;
 			let z = landscape_gen(
-				x, y, 0.0, mesh_size, 0, nsize, depth, 
-				dimension, lacunarity, offset, invert, height, sealevel
+				x, y, 0.0, mesh_size, 0, nsize, nbasis, depth, 
+				dimension, lacunarity, offset, invert, 
+                height, heightoffset, sealevel, platlevel
 			);
-			edgeloop_cur.push(verts.length());
+			edgeloop_cur.push(verts.len() as u32);
 			verts.push(Vertex{position: (x, y, z)});
 		}
 		if edgeloop_prev.len()  > 0 {
-			let faces_row = create_faces(edgeloop_prev, edgeloop_cur);
-			faces.push_all(faces_row);
+			create_faces(&mut faces, &edgeloop_prev, &edgeloop_cur);
 		}	
 		edgeloop_prev = edgeloop_cur;
 	}
@@ -314,15 +317,17 @@ verts = []
 
 pub fn execute(sub_division: i32, mesh_size: i32) -> MyMesh {
 	let (verts, faces) = grid_gen(sub_division, mesh_size);
-	let vertex: Vec<Point3<f32>> = verts.iter().map(|v| Point3::new(v.position[0], v.position[1], v.position[2])).collect();
-	let normals: Vec<Point3<f32>> = verts.iter().map(|v| Point3::new(v.position[0], v.position[1], v.position[2])).collect();
-	
-	let index: Vec<u32> = faces
-		.triangulate()
-		.map(|t| t.vertices())
-		.flatten()
+	let vertex: Vec<Point3<f32>> = verts.iter().map(|v| Point3::new(v.position.0, v.position.1, v.position.2)).collect();
+	let normals: Vec<Point3<f32>> = verts.iter().map(|v| Point3::new(v.position.0, v.position.1, v.position.2)).collect();
+	let iter: std::slice::Iter<genmesh::Polygon<u32>> = faces
+        .iter();
+    let iter_cloned: std::iter::Cloned<std::slice::Iter<genmesh::Polygon<u32>>> = iter.cloned();
+	let index: Vec<u32> = 
+        iter_cloned
+        .triangulate()
+		.vertices()
 		.collect();
-	let transform = Matrix4::eye();
+	let transform = <Matrix4<f32> as One>::one();
 	MyMesh {
     	vertex,
     	normals,

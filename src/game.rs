@@ -88,7 +88,7 @@ pub fn new(graph: Graph) -> Game {
         Model::from_gltf(Path::new("models/dog.glb"), &graph.device),
         //Model::from_gltf(Path::new("models/box.glb"), &device),
         //Model::from_gltf(Path::new("models/center.glb"), &device),
-        terrain_generation::execute().get_buffers(&graph.device),
+        terrain_generation::execute(128, 12).get_buffers(&graph.device),
     ];
 
 

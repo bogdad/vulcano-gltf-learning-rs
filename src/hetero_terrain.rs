@@ -58,9 +58,9 @@ fn npfade(t: f32) -> f32 {
 fn new_perlin(xi: f32, yi: f32, zi: f32) -> f32
 {
   let (mut x, mut y, mut z) = (xi, yi, zi);
-  let u: f32 = x.floor(); 
-  let v: f32 = y.floor();
-  let w: f32 = z.floor();
+  let mut u: f32 = x.floor(); 
+  let mut v: f32 = y.floor();
+  let mut w: f32 = z.floor();
   let X = ((u as i32) & 255) as usize;
   let Y = ((v as i32) & 255) as usize;
   let Z = ((w as i32) & 255) as usize; /* FIND UNIT CUBE THAT CONTAINS POINT */

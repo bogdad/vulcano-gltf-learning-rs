@@ -14,4 +14,4 @@ pub struct Normal {
 vulkano::impl_vertex!(Normal, normal);
 
 use genmesh::Polygon;
-pub type Face = Polygon<i32>;
+pub type Face = Polygon<u32>;
