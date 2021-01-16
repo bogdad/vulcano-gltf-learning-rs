@@ -5,7 +5,6 @@ pub struct Vertex {
 
 vulkano::impl_vertex!(Vertex, position);
 
-
 #[derive(Default, Copy, Clone)]
 pub struct Normal {
     pub normal: (f32, f32, f32),

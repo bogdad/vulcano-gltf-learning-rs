@@ -1,10 +1,10 @@
 use vulkano::device::{Device, DeviceExtensions, Queue};
-use vulkano::image::{ImageUsage, SwapchainImage, AttachmentImage};
-use vulkano::instance::{Instance, PhysicalDevice, PhysicalDeviceType};
 use vulkano::format::Format;
 use vulkano::framebuffer::{Framebuffer, FramebufferAbstract, RenderPassAbstract, Subpass};
-use vulkano::pipeline::viewport::Viewport;
+use vulkano::image::{AttachmentImage, ImageUsage, SwapchainImage};
+use vulkano::instance::{Instance, PhysicalDevice, PhysicalDeviceType};
 use vulkano::pipeline::vertex::TwoBuffersDefinition;
+use vulkano::pipeline::viewport::Viewport;
 use vulkano::pipeline::{GraphicsPipeline, GraphicsPipelineAbstract};
 
 use vulkano::swapchain::{
@@ -14,23 +14,21 @@ use vulkano::swapchain::{
 
 use vulkano_win::VkSurfaceBuild;
 
-use winit::event_loop::{EventLoop};
+use winit::event_loop::EventLoop;
 use winit::window::{Window, WindowBuilder};
 
 use std::iter;
 use std::sync::Arc;
 
-mod render;
-mod utils;
-mod hetero_terrain;
-mod terrain_generation;
 mod game;
+mod hetero_terrain;
+mod render;
+mod terrain_generation;
+mod utils;
 
-use render::Model;
-use utils::{Vertex, Normal};
 use game::Game;
-
-
+use render::Model;
+use utils::{Normal, Vertex};
 
 mod vs {
     vulkano_shaders::shader! {
@@ -82,7 +80,6 @@ void main() {
     }
 }
 
-
 pub struct Graph {
     surface: Arc<Surface<Window>>,
     dimensions: [u32; 2],
@@ -98,7 +95,6 @@ pub struct Graph {
 
 impl Graph {
     fn new(event_loop: &EventLoop<()>) -> Graph {
-        
         let required_extensions = vulkano_win::required_extensions();
         let instance = Instance::new(None, &required_extensions, None).unwrap();
 
@@ -108,12 +104,12 @@ impl Graph {
                 device.name(),
                 device.ty()
             );
-        };
+        }
         let device_ext = DeviceExtensions {
-                khr_swapchain: true,
-                ..DeviceExtensions::none()
-                };
-        
+            khr_swapchain: true,
+            ..DeviceExtensions::none()
+        };
+
         let surface = WindowBuilder::new()
             .build_vk_surface(&event_loop, instance.clone())
             .unwrap();
@@ -122,21 +118,22 @@ impl Graph {
             .find(|device| device.ty() == PhysicalDeviceType::DiscreteGpu)
             .unwrap();
         println!(
-          "Using device: {} (type: {:?})",
-          physical.name(),
-          physical.ty()
+            "Using device: {} (type: {:?})",
+            physical.name(),
+            physical.ty()
         );
         let queue_family = physical
-                .queue_families()
-                .find(|&q| q.supports_graphics() && surface.is_supported(q).unwrap_or(false))
-                .unwrap();
+            .queue_families()
+            .find(|&q| q.supports_graphics() && surface.is_supported(q).unwrap_or(false))
+            .unwrap();
 
         let (device, mut queues) = Device::new(
             physical,
             physical.supported_features(),
             &device_ext,
             [(queue_family, 0.5)].iter().cloned(),
-        ).unwrap();
+        )
+        .unwrap();
         let queue = queues.next().unwrap();
         let (swapchain, images) = {
             let caps = surface.capabilities(physical).unwrap();
@@ -191,32 +188,32 @@ impl Graph {
         //let tcs = tcs::Shader::load(device.clone()).unwrap();
         //let tes = tes::Shader::load(device.clone()).unwrap();
         let fs = fs::Shader::load(device.clone()).unwrap();
-        
+
         let (pipeline, framebuffers) =
             window_size_dependent_setup(device.clone(), &vs, &fs, &images, render_pass.clone());
 
         Graph {
-          surface,
-          dimensions,
-          device,
-          queue,
-          swapchain,
-          render_pass,
-          vs,
-          fs,
-          pipeline,
-          framebuffers,
+            surface,
+            dimensions,
+            device,
+            queue,
+            swapchain,
+            render_pass,
+            vs,
+            fs,
+            pipeline,
+            framebuffers,
         }
     }
 
     pub fn recreate_swapchain(&mut self) {
         let dimensions: [u32; 2] = self.surface.window().inner_size().into();
-        let (new_swapchain, new_images) =
-            match self.swapchain.recreate_with_dimensions(dimensions) {
-                Ok(r) => r,
-                Err(SwapchainCreationError::UnsupportedDimensions) => return,
-                Err(e) => panic!("Failed to recreate swapchain: {:?}", e),
-            };
+        let (new_swapchain, new_images) = match self.swapchain.recreate_with_dimensions(dimensions)
+        {
+            Ok(r) => r,
+            Err(SwapchainCreationError::UnsupportedDimensions) => return,
+            Err(e) => panic!("Failed to recreate swapchain: {:?}", e),
+        };
         self.swapchain = new_swapchain;
         let (new_pipeline, new_framebuffers) = window_size_dependent_setup(
             self.device.clone(),
@@ -224,15 +221,15 @@ impl Graph {
             &self.fs,
             &new_images,
             self.render_pass.clone(),
-            );
+        );
         self.pipeline = new_pipeline;
-        self.framebuffers = new_framebuffers;      
+        self.framebuffers = new_framebuffers;
     }
 }
 
 fn main() {
     println!("Hello, world!");
-    
+
     let event_loop = EventLoop::new();
     let graph = Graph::new(&event_loop);
 
@@ -303,5 +300,3 @@ fn window_size_dependent_setup(
 
     (pipeline, framebuffers)
 }
-
-
