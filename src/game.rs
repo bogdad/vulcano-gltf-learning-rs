@@ -70,7 +70,7 @@ impl World {
   pub fn camera_entered(&mut self, pos: &Point3<f32>) {
     // entering
     if pos.x.rem_euclid(2.0) < f32::EPSILON && pos.z.rem_euclid(2.0) < f32::EPSILON {
-      println!(" entering x,z {:?} {:?}", pos.x, pos.z);
+      println!(" entering x, y, z {:?} {:?} {:?}", pos.x, pos.y, pos.z);
     }
   }
 }
@@ -93,7 +93,7 @@ impl Game {
     // -Z side looking toward the origin with +Y up"
     //                               x     y    z
     let camera = Camera {
-      pos: Point3::new(0.0, -0.2, -1.0),
+      pos: Point3::new(0.0, -0.1, -0.5),
       front: Vector3::new(0.0, 0.0, 1.0),
       up: Vector3::new(0.0, 1.0, 0.0),
     };
@@ -110,10 +110,10 @@ impl Game {
       //Model::from_gltf(Path::new("models/creature2.glb"), &device),
       //Model::from_gltf(Path::new("models/creature3.glb"), &device),
       //Model::from_gltf(Path::new("models/landscape.glb"), &graph.device),
-      Model::from_gltf(Path::new("models/dog.glb"), &graph.device),
+      //Model::from_gltf(Path::new("models/dog.glb"), &graph.device),
       //Model::from_gltf(Path::new("models/box.glb"), &device),
       //Model::from_gltf(Path::new("models/center.glb"), &device),
-      terrain_generation::execute(128, 12).get_buffers(&graph.device),
+      terrain_generation::execute(128, 30).get_buffers(&graph.device),
     ];
 
     let uniform_buffer =

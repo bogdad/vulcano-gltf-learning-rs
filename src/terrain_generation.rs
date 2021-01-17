@@ -4,7 +4,7 @@
 use genmesh::{Polygon, Quad, Triangle, Triangulate, Vertices};
 
 use cgmath::prelude::*;
-use cgmath::{Matrix4, Point3};
+use cgmath::{Matrix4, Point3, Rad, Vector3};
 use rand;
 use rand_distr::{Distribution, UnitSphere};
 
@@ -402,10 +402,17 @@ pub fn execute(sub_division: i32, mesh_size: i32) -> MyMesh {
   let iter_cloned: std::iter::Cloned<std::slice::Iter<genmesh::Polygon<u32>>> = iter.cloned();
   let index: Vec<u32> = iter_cloned.triangulate().vertices().collect();
   let transform = <Matrix4<f32> as One>::one();
-  MyMesh {
+  //let transform = Matrix4::from_angle_x(Rad(std::f32::consts::FRAC_PI_2));
+
+  let mut res = MyMesh {
     vertex,
     normals,
     index,
     transform,
-  }
+  };
+  res.update_transform_2(
+    Vector3::zero(),
+    Matrix4::from_angle_x(Rad(std::f32::consts::FRAC_PI_2)),
+    [1.0, 1.0, 100.0]);
+  res
 }
