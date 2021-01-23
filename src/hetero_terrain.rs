@@ -72,38 +72,38 @@ fn new_perlin(xi: f32, yi: f32, zi: f32) -> f32 {
   u = npfade(x); /* COMPUTE FADE CURVES */
   v = npfade(y); /* FOR EACH OF X,Y,Z. */
   w = npfade(z);
-  let A: usize = (hash[X] + Y) as usize;
-  let AA: usize = hash[A] + Z;
-  let AB: usize = hash[A + 1] + Z; /* HASH COORDINATES OF */
-  let B: usize = hash[X + 1] + Y;
-  let BA: usize = hash[B] + Z;
-  let BB: usize = hash[B + 1] + Z; /* THE 8 CUBE CORNERS, */
+  let a: usize = (hash[X] + Y) as usize;
+  let aa: usize = hash[a] + Z;
+  let ab: usize = hash[a + 1] + Z; /* HASH COORDINATES OF */
+  let b: usize = hash[X + 1] + Y;
+  let ba: usize = hash[b] + Z;
+  let bb: usize = hash[b + 1] + Z; /* THE 8 CUBE CORNERS, */
   lerp(
     w,
     lerp(
       v,
       lerp(
         u,
-        grad(hash[AA], x, y, z), /* AND ADD */
-        grad(hash[BA], x - 1.0, y, z),
+        grad(hash[aa], x, y, z), /* AND ADD */
+        grad(hash[ba], x - 1.0, y, z),
       ), /* BLENDED */
       lerp(
         u,
-        grad(hash[AB], x, y - 1.0, z), /* RESULTS */
-        grad(hash[BB], x - 1.0, y - 1.0, z),
+        grad(hash[ab], x, y - 1.0, z), /* RESULTS */
+        grad(hash[bb], x - 1.0, y - 1.0, z),
       ),
     ), /* FROM  8 */
     lerp(
       v,
       lerp(
         u,
-        grad(hash[AA + 1], x, y, z - 1.0), /* CORNERS */
-        grad(hash[BA + 1], x - 1.0, y, z - 1.0),
+        grad(hash[aa + 1], x, y, z - 1.0), /* CORNERS */
+        grad(hash[ba + 1], x - 1.0, y, z - 1.0),
       ), /* OF CUBE */
       lerp(
         u,
-        grad(hash[AB + 1], x, y - 1.0, z - 1.0),
-        grad(hash[BB + 1], x - 1.0, y - 1.0, z - 1.0),
+        grad(hash[ab + 1], x, y - 1.0, z - 1.0),
+        grad(hash[bb + 1], x - 1.0, y - 1.0, z - 1.0),
       ),
     ),
   )

@@ -8,6 +8,8 @@ use vulkano::command_buffer::{AutoCommandBufferBuilder, SubpassContents};
 use vulkano::sync;
 use vulkano::sync::{FlushError, GpuFuture};
 
+use vulkano_text::{DrawTextTrait};
+
 use winit::event::{Event, KeyboardInput, VirtualKeyCode, WindowEvent};
 use winit::event_loop::ControlFlow;
 
@@ -15,7 +17,7 @@ use cgmath::prelude::*;
 use cgmath::{Matrix3, Matrix4, Point3, Rad, Vector3};
 
 use std::sync::Arc;
-use std::time::Instant;
+use std::fmt;
 
 use crate::vs;
 use crate::Graph;
@@ -35,7 +37,16 @@ struct Camera {
   speed: f32,
 }
 impl Camera {
-  pub fn react(self: &mut Camera, input: &KeyboardInput) -> bool {
+
+  fn adjust(&mut self, mode: Mode, by: Vector3<f32>) {
+    match mode {
+      Mode::MoveCameraPos => self.pos += by,
+      Mode::MoveCameraFront => self.front += by,
+      Mode::MoveCameraUp => self.up += by,
+    }
+  }
+
+  pub fn react(self: &mut Camera, mode: Mode, input: &KeyboardInput) -> bool {
     if let KeyboardInput {
       virtual_keycode: Some(key_code),
       ..
@@ -45,19 +56,19 @@ impl Camera {
       let zz = self.front.cross(self.up).normalize();
       match key_code {
         VirtualKeyCode::A => {
-          self.pos -= zz * camera_speed;
+          self.adjust(mode, -zz * camera_speed);
           return true;
         }
         VirtualKeyCode::D => {
-          self.pos += zz * camera_speed;
+          self.adjust(mode, zz * camera_speed);
           return true;
         }
         VirtualKeyCode::W => {
-          self.pos += camera_speed * self.front;
+          self.adjust(mode, camera_speed * self.front);
           return true;
         }
         VirtualKeyCode::S => {
-          self.pos -= camera_speed * self.front;
+          self.adjust(mode, -camera_speed * self.front);
           return true;
         }
         _ => {
@@ -103,13 +114,71 @@ impl Camera {
   }
 }
 
-struct World {}
+impl fmt::Display for Camera {
+  fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "pos: ({}, {}, {}) front: ({}, {}, {}), up: ({}, {}, {}) speed: {}",
+          self.pos.x, self.pos.y, self.pos.z,
+          self.front.x, self.front.y, self.front.z,
+          self.up.x, self.up.y, self.up.z,
+          self.speed)
+  }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq)]
+enum Mode {
+  MoveCameraPos,
+  MoveCameraFront,
+  MoveCameraUp,
+}
+
+impl Mode {
+  const VALUES: [Self; 3] = [Self::MoveCameraPos, Self::MoveCameraFront, Self::MoveCameraUp];
+  fn next(&self) -> Mode {
+    let mut prev = Self::MoveCameraUp;
+    for mode in Mode::VALUES.iter().copied() {
+        if prev == *self {
+          return mode;
+        }
+        prev = mode;
+    }
+    return prev
+  }
+}
+
+struct World {
+  mode: Mode
+}
 impl World {
+  pub fn new() -> Self {
+    World {
+      mode: Mode::MoveCameraPos,
+    }
+  }
   pub fn camera_entered(&mut self, pos: &Point3<f32>) {
     // entering
     if pos.x.rem_euclid(2.0) < f32::EPSILON && pos.z.rem_euclid(2.0) < f32::EPSILON {
       println!(" entering x, y, z {:?} {:?} {:?}", pos.x, pos.y, pos.z);
     }
+  }
+  pub fn command(&mut self) {
+    self.mode = self.mode.next();
+  }
+  pub fn react(&mut self, input: &KeyboardInput) {
+    if let KeyboardInput {
+      virtual_keycode: Some(key_code),
+      ..
+    } = input {
+      match key_code {
+        VirtualKeyCode::Escape => self.command(),
+        _ => (),
+      }
+    }
+  }
+}
+
+impl fmt::Display for World {
+  fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    write!(f, "mode {:?}", self.mode)
   }
 }
 
@@ -129,6 +198,9 @@ impl Game {
     // "and the default camera sits on the
     // -Z side looking toward the origin with +Y up"
     //                               x     y    z
+    // y = up/down
+    // x = left/right
+    // z = close/far
     let camera = Camera {
       pos: Point3::new(0.0, 0.0, -1.0),
       front: Vector3::new(0.0, 0.0, 1.0),
@@ -136,12 +208,10 @@ impl Game {
       speed: 0.1,
     };
 
-    let world = World {};
+    let world = World::new();
 
     let recreate_swapchain = false;
     let previous_frame_end = Some(sync::now(graph.device.clone()).boxed());
-
-    let rotation_start = Instant::now();
 
     let models = vec![
       //Model::from_gltf(Path::new("models/creature.glb"), &device),
@@ -219,7 +289,16 @@ impl Game {
       model.draw_indexed(&mut builder, self.graph.pipeline.clone(), set.clone())
     }
 
+    let mut y = 50.0;
+    let status = self.status_string();
+    for line in status .split("\n") {
+      self.graph.draw_text.queue_text(200.0, y, 40.0, [1.0, 1.0, 1.0, 1.0], line);
+      y += 40.0;
+    };
+
     builder.end_render_pass().unwrap();
+    builder.draw_text(&mut self.graph.draw_text, image_num);
+
     let command_buffer = builder.build().unwrap();
 
     let future = self
@@ -269,7 +348,8 @@ impl Game {
         event: WindowEvent::KeyboardInput { input, .. },
         ..
       } => {
-        let camera_moved = self.camera.react(&input);
+        self.world.react(&input);
+        let camera_moved = self.camera.react(self.world.mode, &input);
         if camera_moved {
           self.world.camera_entered(&self.camera.pos);
         }
@@ -279,5 +359,9 @@ impl Game {
       }
       _ => (),
     }
+  }
+
+  fn status_string(&self) -> String {
+    format!("world {}\ncamera {}", self.world, self.camera)
   }
 }

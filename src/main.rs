@@ -17,6 +17,9 @@ use vulkano_win::VkSurfaceBuild;
 use winit::event_loop::EventLoop;
 use winit::window::{Window, WindowBuilder};
 
+extern crate vulkano_text;
+use vulkano_text::{DrawText, DrawTextTrait};
+
 use std::iter;
 use std::sync::Arc;
 
@@ -92,6 +95,7 @@ pub struct Graph {
   fs: fs::Shader,
   pipeline: Arc<dyn GraphicsPipelineAbstract + Send + Sync>,
   framebuffers: Vec<Arc<dyn FramebufferAbstract + Send + Sync>>,
+  draw_text: DrawText,
 }
 
 impl Graph {
@@ -193,6 +197,9 @@ impl Graph {
     let (pipeline, framebuffers) =
       window_size_dependent_setup(device.clone(), &vs, &fs, &images, render_pass.clone());
 
+    let draw_text = DrawText::new(device.clone(), queue.clone(), swapchain.clone(), &images);
+
+
     Graph {
       surface,
       dimensions,
@@ -204,6 +211,7 @@ impl Graph {
       fs,
       pipeline,
       framebuffers,
+      draw_text,
     }
   }
 
@@ -224,6 +232,8 @@ impl Graph {
     );
     self.pipeline = new_pipeline;
     self.framebuffers = new_framebuffers;
+
+    self.draw_text = DrawText::new(self.device.clone(), self.queue.clone(), self.swapchain.clone(), &new_images);
   }
 }
 
