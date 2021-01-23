@@ -17,6 +17,7 @@ use std::ops::MulAssign;
 
 use crate::utils::{Normal, Vertex};
 
+#[derive(Debug)]
 pub struct MyMesh {
   pub vertex: Vec<Point3<f32>>,
   pub normals: Vec<Point3<f32>>,

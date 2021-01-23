@@ -157,7 +157,7 @@ impl World {
   pub fn camera_entered(&mut self, pos: &Point3<f32>) {
     // entering
     if pos.x.rem_euclid(2.0) < f32::EPSILON && pos.z.rem_euclid(2.0) < f32::EPSILON {
-      println!(" entering x, y, z {:?} {:?} {:?}", pos.x, pos.y, pos.z);
+      //println!(" entering x, y, z {:?} {:?} {:?}", pos.x, pos.y, pos.z);
     }
   }
   pub fn command(&mut self) {
@@ -222,7 +222,7 @@ impl Game {
       //Model::from_gltf(Path::new("models/box.glb"), &device),
       //Model::from_gltf(Path::new("models/center.glb"), &device),
       terrain_generation::execute(128, 2).get_buffers(&graph.device),
-      PrimitiveCube::new(2.0, 4.0, 8.0).mesh.get_buffers(&graph.device),
+      PrimitiveCube::new(2.0, 4.0, 8.0, (-4.0, 0.0, 0.0)).mesh.get_buffers(&graph.device),
     ];
 
     let uniform_buffer =
