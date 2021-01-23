@@ -25,6 +25,7 @@ mod hetero_terrain;
 mod render;
 mod terrain_generation;
 mod utils;
+mod primitives;
 
 use game::Game;
 use render::Model;
@@ -227,8 +228,6 @@ impl Graph {
 }
 
 fn main() {
-  println!("Hello, world!");
-
   let event_loop = EventLoop::new();
   let graph = Graph::new(&event_loop);
 

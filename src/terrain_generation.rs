@@ -174,130 +174,130 @@ fn landscape_gen(
   value
 }
 
-fn create_faces(out_faces: &mut Vec<Face>, vertIdx1: &Vec<u32>, vertIdx2: &Vec<u32>) {
+fn create_faces(out_faces: &mut Vec<Face>, vert_idx_1: &Vec<u32>, vert_idx_2: &Vec<u32>) {
   /*
   # A very simple "bridge" tool.
   # Connects two equally long vertex rows with faces.
   # Returns a list of the new faces (list of  lists)
   #
-  # vertIdx1 ... First vertex list (list of vertex indices).
-  # vertIdx2 ... Second vertex list (list of vertex indices).
+  # vert_idx_1 ... First vertex list (list of vertex indices).
+  # vert_idx_2 ... Second vertex list (list of vertex indices).
   # closed ... Creates a loop (first & last are closed).
   # flipped ... Invert the normal of the face(s).
   #
-  # Note: You can set vertIdx1 to a single vertex index to create
+  # Note: You can set vert_idx_1 to a single vertex index to create
   #    a fan/star of faces.
   # Note: If both vertex idx list are the same length they have
   #    to have at least 2 vertices.
-  def createFaces(vertIdx1, vertIdx2, closed=False, flipped=False):
+  def createFaces(vert_idx_1, vert_idx_2, closed=False, flipped=False):
       faces = []
 
-      if not vertIdx1 or not vertIdx2:
+      if not vert_idx_1 or not vert_idx_2:
           return None
 
-      if len(vertIdx1) < 2 and len(vertIdx2) < 2:
+      if len(vert_idx_1) < 2 and len(vert_idx_2) < 2:
           return None
 
       fan = False
-      if (len(vertIdx1) != len(vertIdx2)):
-          if (len(vertIdx1) == 1 and len(vertIdx2) > 1):
+      if (len(vert_idx_1) != len(vert_idx_2)):
+          if (len(vert_idx_1) == 1 and len(vert_idx_2) > 1):
               fan = True
           else:
               return None
 
-      total = len(vertIdx2)
+      total = len(vert_idx_2)
 
       if closed:
           # Bridge the start with the end.
           if flipped:
               face = [
-                  vertIdx1[0],
-                  vertIdx2[0],
-                  vertIdx2[total - 1]]
+                  vert_idx_1[0],
+                  vert_idx_2[0],
+                  vert_idx_2[total - 1]]
               if not fan:
-                  face.append(vertIdx1[total - 1])
+                  face.append(vert_idx_1[total - 1])
               faces.append(face)
 
           else:
-              face = [vertIdx2[0], vertIdx1[0]]
+              face = [vert_idx_2[0], vert_idx_1[0]]
               if not fan:
-                  face.append(vertIdx1[total - 1])
-              face.append(vertIdx2[total - 1])
+                  face.append(vert_idx_1[total - 1])
+              face.append(vert_idx_2[total - 1])
               faces.append(face)
 
       # Bridge the rest of the faces.
       for num in range(total - 1):
           if flipped:
               if fan:
-                  face = [vertIdx2[num], vertIdx1[0], vertIdx2[num + 1]]
+                  face = [vert_idx_2[num], vert_idx_1[0], vert_idx_2[num + 1]]
               else:
-                  face = [vertIdx2[num], vertIdx1[num],
-                      vertIdx1[num + 1], vertIdx2[num + 1]]
+                  face = [vert_idx_2[num], vert_idx_1[num],
+                      vert_idx_1[num + 1], vert_idx_2[num + 1]]
               faces.append(face)
           else:
               if fan:
-                  face = [vertIdx1[0], vertIdx2[num], vertIdx2[num + 1]]
+                  face = [vert_idx_1[0], vert_idx_2[num], vert_idx_2[num + 1]]
               else:
-                  face = [vertIdx1[num], vertIdx2[num],
-                      vertIdx2[num + 1], vertIdx1[num + 1]]
+                  face = [vert_idx_1[num], vert_idx_2[num],
+                      vert_idx_2[num + 1], vert_idx_1[num + 1]]
               faces.append(face)
 
       return faces
   */
-  if vertIdx1.len() == 0 || vertIdx2.len() == 0 {
+  if vert_idx_1.len() == 0 || vert_idx_2.len() == 0 {
     panic!(
       "lengths should be positive but they are {:?} {:?}",
-      vertIdx1.len(),
-      vertIdx2.len()
+      vert_idx_1.len(),
+      vert_idx_2.len()
     );
   }
-  if vertIdx1.len() < 2 && vertIdx2.len() < 2 {
+  if vert_idx_1.len() < 2 && vert_idx_2.len() < 2 {
     panic!(
       "lengths cant be both less than 2 but they are {:?} {:?}",
-      vertIdx1.len(),
-      vertIdx2.len()
+      vert_idx_1.len(),
+      vert_idx_2.len()
     );
   }
   let mut fan = false;
-  if vertIdx1.len() != vertIdx2.len() {
-    if vertIdx1.len() == 1 && vertIdx2.len() > 1 {
+  if vert_idx_1.len() != vert_idx_2.len() {
+    if vert_idx_1.len() == 1 && vert_idx_2.len() > 1 {
       fan = true
     } else {
       panic!(
         "if len first is 1 len  the second should be more than 1 but they are {:?} {:?}",
-        vertIdx1.len(),
-        vertIdx2.len()
+        vert_idx_1.len(),
+        vert_idx_2.len()
       );
     }
   }
-  let total = vertIdx2.len();
+  let total = vert_idx_2.len();
   if !fan {
     out_faces.push(Polygon::PolyQuad(Quad::new(
-      vertIdx2[0],
-      vertIdx1[0],
-      vertIdx1[total - 1],
-      vertIdx2[total - 1],
+      vert_idx_2[0],
+      vert_idx_1[0],
+      vert_idx_1[total - 1],
+      vert_idx_2[total - 1],
     )));
   } else {
     out_faces.push(Polygon::PolyTri(Triangle::new(
-      vertIdx2[0],
-      vertIdx1[0],
-      vertIdx2[total - 1],
+      vert_idx_2[0],
+      vert_idx_1[0],
+      vert_idx_2[total - 1],
     )));
   }
   for num in 0..(total - 1) {
     if fan {
       out_faces.push(Polygon::PolyTri(Triangle::new(
-        vertIdx1[0],
-        vertIdx2[num],
-        vertIdx2[num + 1],
+        vert_idx_1[0],
+        vert_idx_2[num],
+        vert_idx_2[num + 1],
       )));
     } else {
       out_faces.push(Polygon::PolyQuad(Quad::new(
-        vertIdx1[num],
-        vertIdx2[num],
-        vertIdx2[num + 1],
-        vertIdx1[num + 1],
+        vert_idx_1[num],
+        vert_idx_2[num],
+        vert_idx_2[num + 1],
+        vert_idx_1[num + 1],
       )));
     }
   }
@@ -413,6 +413,6 @@ pub fn execute(sub_division: i32, mesh_size: i32) -> MyMesh {
   res.update_transform_2(
     Vector3::zero(),
     Matrix4::from_angle_x(Rad(std::f32::consts::FRAC_PI_2)),
-    [1.0, 1.0, 100.0]);
+    [1.0, 1.0, 1.0]);
   res
 }

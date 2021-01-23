@@ -25,7 +25,7 @@ pub struct MyMesh {
 }
 
 impl MyMesh {
-  fn new(
+  pub fn new(
     vertex: Vec<cgmath::Point3<f32>>,
     normals: Vec<cgmath::Point3<f32>>,
     index: Vec<u32>,

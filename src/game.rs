@@ -14,7 +14,6 @@ use winit::event_loop::ControlFlow;
 use cgmath::prelude::*;
 use cgmath::{Matrix3, Matrix4, Point3, Rad, Vector3};
 
-use std::path::Path;
 use std::sync::Arc;
 use std::time::Instant;
 
@@ -23,12 +22,17 @@ use crate::Graph;
 use crate::Model;
 
 use crate::terrain_generation;
+use crate::primitives::PrimitiveCube;
 
 #[derive(Debug)]
 struct Camera {
+  // where camera is looking at
   front: Vector3<f32>,
-  up: Vector3<f32>,
+  // where camera is
   pos: Point3<f32>,
+  // up is there
+  up: Vector3<f32>,
+  speed: f32,
 }
 impl Camera {
   pub fn react(self: &mut Camera, input: &KeyboardInput) -> bool {
@@ -37,7 +41,7 @@ impl Camera {
       ..
     } = input
     {
-      let camera_speed = 0.25;
+      let camera_speed = self.speed;
       let zz = self.front.cross(self.up).normalize();
       match key_code {
         VirtualKeyCode::A => {
@@ -63,6 +67,40 @@ impl Camera {
     }
     return false;
   }
+
+  fn proj(&self, graph: &Graph) -> vs::ty::Data {
+    //let _elapsed = self.rotation_start.elapsed();
+    let rotation = 0;
+    //elapsed.as_secs() as f64 + elapsed.subsec_nanos() as f64 / 1_000_000_000.0;
+    let rotation = Matrix3::from_angle_y(Rad(rotation as f32));
+
+    // note: this teapot was meant for OpenGL where the origin is at the lower left
+    //       instead the origin is at the upper left in, Vulkan, so we reverse the Y axis
+    let aspect_ratio = graph.dimensions[0] as f32 / graph.dimensions[1] as f32;
+    let mut proj =
+      cgmath::perspective(Rad(std::f32::consts::FRAC_PI_2), aspect_ratio, 0.01, 100.0);
+
+    // flipping the "horizontal" projection bit
+    proj[0][0] = -proj[0][0];
+
+    let target = self.pos.to_vec() + self.front;
+
+    let view = Matrix4::look_at(self.pos, Point3::from_vec(target), self.up);
+    let scale = Matrix4::from_scale(0.1);
+    /*
+       mat4 worldview = uniforms.view * uniforms.world;
+       v_normal = transpose(inverse(mat3(worldview))) * normal;
+       gl_Position = uniforms.proj * worldview * vec4(position, 1.0);
+    */
+    let uniform_data = vs::ty::Data {
+      //world: Matrix4::from(eye).into(),
+      world: Matrix4::from(rotation).into(),
+      //world: <Matrix4<f32> as One>::one().into(),
+      view: (view * scale).into(),
+      proj: proj.into(),
+    };
+    uniform_data
+  }
 }
 
 struct World {}
@@ -83,7 +121,6 @@ pub struct Game {
   models: Vec<Model>,
   uniform_buffer: CpuBufferPool<vs::ty::Data>,
   previous_frame_end: Option<Box<dyn GpuFuture>>,
-  rotation_start: Instant,
 }
 
 impl Game {
@@ -93,9 +130,10 @@ impl Game {
     // -Z side looking toward the origin with +Y up"
     //                               x     y    z
     let camera = Camera {
-      pos: Point3::new(0.0, -0.1, -0.5),
+      pos: Point3::new(0.0, 0.0, -1.0),
       front: Vector3::new(0.0, 0.0, 1.0),
       up: Vector3::new(0.0, 1.0, 0.0),
+      speed: 0.1,
     };
 
     let world = World {};
@@ -113,7 +151,8 @@ impl Game {
       //Model::from_gltf(Path::new("models/dog.glb"), &graph.device),
       //Model::from_gltf(Path::new("models/box.glb"), &device),
       //Model::from_gltf(Path::new("models/center.glb"), &device),
-      terrain_generation::execute(128, 30).get_buffers(&graph.device),
+      terrain_generation::execute(128, 2).get_buffers(&graph.device),
+      PrimitiveCube::new(2.0, 4.0, 8.0).mesh.get_buffers(&graph.device),
     ];
 
     let uniform_buffer =
@@ -127,7 +166,6 @@ impl Game {
       models,
       uniform_buffer,
       previous_frame_end,
-      rotation_start,
     }
   }
 
@@ -138,37 +176,8 @@ impl Game {
       self.recreate_swapchain = false;
     }
     let uniform_buffer_subbuffer = {
-      let _elapsed = self.rotation_start.elapsed();
-      let rotation = 0;
-      //elapsed.as_secs() as f64 + elapsed.subsec_nanos() as f64 / 1_000_000_000.0;
-      let rotation = Matrix3::from_angle_y(Rad(rotation as f32));
 
-      // note: this teapot was meant for OpenGL where the origin is at the lower left
-      //       instead the origin is at the upper left in Vulkan, so we reverse the Y axis
-      let aspect_ratio = self.graph.dimensions[0] as f32 / self.graph.dimensions[1] as f32;
-      let mut proj =
-        cgmath::perspective(Rad(std::f32::consts::FRAC_PI_2), aspect_ratio, 0.01, 100.0);
-
-      // flipping the "horizontal" projection bit
-      proj[0][0] = -proj[0][0];
-
-      let target = self.camera.pos.to_vec() + self.camera.front;
-
-      let view = Matrix4::look_at(self.camera.pos, Point3::from_vec(target), self.camera.up);
-      let scale = Matrix4::from_scale(0.01);
-      /*
-         mat4 worldview = uniforms.view * uniforms.world;
-         v_normal = transpose(inverse(mat3(worldview))) * normal;
-         gl_Position = uniforms.proj * worldview * vec4(position, 1.0);
-      */
-      let uniform_data = vs::ty::Data {
-        //world: Matrix4::from(eye).into(),
-        world: Matrix4::from(rotation).into(),
-        //world: <Matrix4<f32> as One>::one().into(),
-        view: (view * scale).into(),
-        proj: proj.into(),
-      };
-
+      let uniform_data = self.camera.proj(&self.graph);
       self.uniform_buffer.next(uniform_data).unwrap()
     };
     let layout = self.graph.pipeline.descriptor_set_layout(0).unwrap();

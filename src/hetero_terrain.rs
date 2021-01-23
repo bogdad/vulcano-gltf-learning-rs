@@ -140,7 +140,7 @@ pub fn hetero_terrain_new_perlin(
     z *= lacunarity;
   }
   let rmd: f32 = octaves - octaves.floor();
-  if rmd != 0.0 {
+  if rmd <= f32::EPSILON {
     let increment = (noisefunc(x, y, z) + offset) * pwr * value;
     value += rmd * increment;
   }
