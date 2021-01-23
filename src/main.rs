@@ -18,6 +18,7 @@ use winit::event_loop::EventLoop;
 use winit::window::{Window, WindowBuilder};
 
 extern crate vulkano_text;
+extern crate mint;
 use vulkano_text::{DrawText, DrawTextTrait};
 
 use std::iter;

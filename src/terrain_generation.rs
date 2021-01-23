@@ -1,8 +1,8 @@
 // translation of https://github.com/sftd/blender-addons/blob/master/add_mesh_ant_landscape.py
 // into rust
 
-use genmesh::{Polygon, Quad, Triangle, Triangulate, Vertices};
-
+use genmesh::{Polygon, Quad, Triangle, Triangulate, Vertices, MapToVertices, Neighbors};
+use mint::Vector3 as MintVector3;
 use cgmath::prelude::*;
 use cgmath::{Matrix4, Point3, Rad, Vector3};
 use rand;
@@ -394,15 +394,29 @@ pub fn execute(sub_division: i32, mesh_size: i32) -> MyMesh {
     .iter()
     .map(|v| Point3::new(v.position.0, v.position.1, v.position.2))
     .collect();
-  let normals: Vec<Point3<f32>> = verts
-    .iter()
-    .map(|v| Point3::new(v.position.0, v.position.1, v.position.2))
-    .collect();
-  let iter: std::slice::Iter<genmesh::Polygon<u32>> = faces.iter();
-  let iter_cloned: std::iter::Cloned<std::slice::Iter<genmesh::Polygon<u32>>> = iter.cloned();
-  let index: Vec<u32> = iter_cloned.triangulate().vertices().collect();
+
+  let triangles: Vec<Triangle<usize>> =
+    faces
+      .iter()
+      .cloned()
+      .triangulate()
+      .vertex(|v| v as usize)
+      .collect();
+
+  let neighbours = Neighbors::new(vertex.clone(), triangles.clone());
+
+  let normals: Vec<Point3<f32>> = (0..vertex.len())
+      .map(|i| neighbours.normal_for_vertex(i, |v|{ MintVector3::<f32>::from([v.x, v.y, v.z]) }))
+      .map(|v| Point3::from((-v.x, -v.y, -v.z)))
+      .collect();
+
+  let index: Vec<u32> = triangles
+      .iter()
+      .cloned()
+      .vertices()
+      .map(|v| v as u32)
+      .collect();
   let transform = <Matrix4<f32> as One>::one();
-  //let transform = Matrix4::from_angle_x(Rad(std::f32::consts::FRAC_PI_2));
 
   let mut res = MyMesh {
     vertex,
@@ -413,6 +427,6 @@ pub fn execute(sub_division: i32, mesh_size: i32) -> MyMesh {
   res.update_transform_2(
     Vector3::zero(),
     Matrix4::from_angle_x(Rad(std::f32::consts::FRAC_PI_2)),
-    [1.0, 1.0, 1.0]);
+    [1.0, 5.0, 1.0]);
   res
 }
