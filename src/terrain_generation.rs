@@ -427,6 +427,6 @@ pub fn execute(sub_division: i32, mesh_size: i32) -> MyMesh {
   res.update_transform_2(
     Vector3::zero(),
     Matrix4::from_angle_x(Rad(std::f32::consts::FRAC_PI_2)),
-    [1.0, 5.0, 1.0]);
+    [5.0, 5.0, 15.0]);
   res
 }

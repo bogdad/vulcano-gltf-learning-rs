@@ -56,11 +56,11 @@ impl Camera {
       let zz = self.front.cross(self.up).normalize();
       match key_code {
         VirtualKeyCode::A => {
-          self.adjust(mode, -zz * camera_speed);
+          self.adjust(mode, zz * camera_speed);
           return true;
         }
         VirtualKeyCode::D => {
-          self.adjust(mode, zz * camera_speed);
+          self.adjust(mode, -zz * camera_speed);
           return true;
         }
         VirtualKeyCode::W => {
@@ -89,7 +89,7 @@ impl Camera {
     //       instead the origin is at the upper left in, Vulkan, so we reverse the Y axis
     let aspect_ratio = graph.dimensions[0] as f32 / graph.dimensions[1] as f32;
     let mut proj =
-      cgmath::perspective(Rad(std::f32::consts::FRAC_PI_2), aspect_ratio, 0.01, 100.0);
+      cgmath::perspective(Rad(std::f32::consts::FRAC_PI_2), aspect_ratio, 0.1, 100.0);
 
     // flipping the "horizontal" projection bit
     proj[0][0] = -proj[0][0];
@@ -97,7 +97,7 @@ impl Camera {
     let target = self.pos.to_vec() + self.front;
 
     let view = Matrix4::look_at(self.pos, Point3::from_vec(target), self.up);
-    let scale = Matrix4::from_scale(0.1);
+    let scale = Matrix4::from_scale(0.5);
     /*
        mat4 worldview = uniforms.view * uniforms.world;
        v_normal = transpose(inverse(mat3(worldview))) * normal;
@@ -202,7 +202,7 @@ impl Game {
     // x = left/right
     // z = close/far
     let camera = Camera {
-      pos: Point3::new(0.0, 0.0, -1.0),
+      pos: Point3::new(1.0, -1.0, -1.0),
       front: Vector3::new(0.0, 0.0, 1.0),
       up: Vector3::new(0.0, 1.0, 0.0),
       speed: 0.1,
