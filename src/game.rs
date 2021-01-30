@@ -10,177 +10,20 @@ use vulkano::sync::{FlushError, GpuFuture};
 
 use vulkano_text::{DrawTextTrait};
 
-use winit::event::{Event, KeyboardInput, VirtualKeyCode, WindowEvent};
+use winit::event::{Event, WindowEvent};
 use winit::event_loop::ControlFlow;
 
-use cgmath::prelude::*;
-use cgmath::{Matrix3, Matrix4, Point3, Rad, Vector3};
+use cgmath::{Point3, Vector3};
 
 use std::sync::Arc;
-use std::fmt;
 
 use crate::vs;
 use crate::Graph;
 use crate::Model;
-
-use crate::terrain_generation;
-use crate::primitives::PrimitiveCube;
-
-#[derive(Debug)]
-struct Camera {
-  // where camera is looking at
-  front: Vector3<f32>,
-  // where camera is
-  pos: Point3<f32>,
-  // up is there
-  up: Vector3<f32>,
-  speed: f32,
-}
-impl Camera {
-
-  fn adjust(&mut self, mode: Mode, by: Vector3<f32>) {
-    match mode {
-      Mode::MoveCameraPos => self.pos += by,
-      Mode::MoveCameraFront => self.front += by,
-      Mode::MoveCameraUp => self.up += by,
-    }
-  }
-
-  pub fn react(self: &mut Camera, mode: Mode, input: &KeyboardInput) -> bool {
-    if let KeyboardInput {
-      virtual_keycode: Some(key_code),
-      ..
-    } = input
-    {
-      let camera_speed = self.speed;
-      let zz = self.front.cross(self.up).normalize();
-      match key_code {
-        VirtualKeyCode::A => {
-          self.adjust(mode, zz * camera_speed);
-          return true;
-        }
-        VirtualKeyCode::D => {
-          self.adjust(mode, -zz * camera_speed);
-          return true;
-        }
-        VirtualKeyCode::W => {
-          self.adjust(mode, camera_speed * self.front);
-          return true;
-        }
-        VirtualKeyCode::S => {
-          self.adjust(mode, -camera_speed * self.front);
-          return true;
-        }
-        _ => {
-          return false;
-        }
-      };
-    }
-    return false;
-  }
-
-  fn proj(&self, graph: &Graph) -> vs::ty::Data {
-    //let _elapsed = self.rotation_start.elapsed();
-    let rotation = 0;
-    //elapsed.as_secs() as f64 + elapsed.subsec_nanos() as f64 / 1_000_000_000.0;
-    let rotation = Matrix3::from_angle_y(Rad(rotation as f32));
-
-    // note: this teapot was meant for OpenGL where the origin is at the lower left
-    //       instead the origin is at the upper left in, Vulkan, so we reverse the Y axis
-    let aspect_ratio = graph.dimensions[0] as f32 / graph.dimensions[1] as f32;
-    let mut proj =
-      cgmath::perspective(Rad(std::f32::consts::FRAC_PI_2), aspect_ratio, 0.1, 100.0);
-
-    // flipping the "horizontal" projection bit
-    proj[0][0] = -proj[0][0];
-
-    let target = self.pos.to_vec() + self.front;
-
-    let view = Matrix4::look_at(self.pos, Point3::from_vec(target), self.up);
-    let scale = Matrix4::from_scale(0.5);
-    /*
-       mat4 worldview = uniforms.view * uniforms.world;
-       v_normal = transpose(inverse(mat3(worldview))) * normal;
-       gl_Position = uniforms.proj * worldview * vec4(position, 1.0);
-    */
-    let uniform_data = vs::ty::Data {
-      //world: Matrix4::from(eye).into(),
-      world: Matrix4::from(rotation).into(),
-      //world: <Matrix4<f32> as One>::one().into(),
-      view: (view * scale).into(),
-      proj: proj.into(),
-    };
-    uniform_data
-  }
-}
-
-impl fmt::Display for Camera {
-  fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "pos: ({}, {}, {}) front: ({}, {}, {}), up: ({}, {}, {}) speed: {}",
-          self.pos.x, self.pos.y, self.pos.z,
-          self.front.x, self.front.y, self.front.z,
-          self.up.x, self.up.y, self.up.z,
-          self.speed)
-  }
-}
-
-#[derive(Debug, Copy, Clone, PartialEq)]
-enum Mode {
-  MoveCameraPos,
-  MoveCameraFront,
-  MoveCameraUp,
-}
-
-impl Mode {
-  const VALUES: [Self; 3] = [Self::MoveCameraPos, Self::MoveCameraFront, Self::MoveCameraUp];
-  fn next(&self) -> Mode {
-    let mut prev = Self::MoveCameraUp;
-    for mode in Mode::VALUES.iter().copied() {
-        if prev == *self {
-          return mode;
-        }
-        prev = mode;
-    }
-    return prev
-  }
-}
-
-struct World {
-  mode: Mode
-}
-impl World {
-  pub fn new() -> Self {
-    World {
-      mode: Mode::MoveCameraPos,
-    }
-  }
-  pub fn camera_entered(&mut self, pos: &Point3<f32>) {
-    // entering
-    if pos.x.rem_euclid(2.0) < f32::EPSILON && pos.z.rem_euclid(2.0) < f32::EPSILON {
-      //println!(" entering x, y, z {:?} {:?} {:?}", pos.x, pos.y, pos.z);
-    }
-  }
-  pub fn command(&mut self) {
-    self.mode = self.mode.next();
-  }
-  pub fn react(&mut self, input: &KeyboardInput) {
-    if let KeyboardInput {
-      virtual_keycode: Some(key_code),
-      ..
-    } = input {
-      match key_code {
-        VirtualKeyCode::Escape => self.command(),
-        _ => (),
-      }
-    }
-  }
-}
-
-impl fmt::Display for World {
-  fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-    write!(f, "mode {:?}", self.mode)
-  }
-}
+use crate::camera::Camera;
+use crate::world::World;
+use crate::sky::Sky;
+use crate::things::primitives::PrimitiveCube;
 
 pub struct Game {
   graph: Graph,
@@ -208,7 +51,7 @@ impl Game {
       speed: 0.1,
     };
 
-    let world = World::new();
+    let world = World::new(&graph);
 
     let recreate_swapchain = false;
     let previous_frame_end = Some(sync::now(graph.device.clone()).boxed());
@@ -221,7 +64,6 @@ impl Game {
       //Model::from_gltf(Path::new("models/dog.glb"), &graph.device),
       //Model::from_gltf(Path::new("models/box.glb"), &device),
       //Model::from_gltf(Path::new("models/center.glb"), &device),
-      terrain_generation::execute(128, 2).get_buffers(&graph.device),
       PrimitiveCube::new(2.0, 4.0, 8.0, (-4.0, 0.0, 0.0)).mesh.get_buffers(&graph.device),
     ];
 
@@ -288,6 +130,10 @@ impl Game {
     for model in &self.models {
       model.draw_indexed(&mut builder, self.graph.pipeline.clone(), set.clone())
     }
+    for model in self.world.get_models() {
+      model.draw_indexed(&mut builder, self.graph.pipeline.clone(), set.clone());
+    }
+
 
     let mut y = 50.0;
     let status = self.status_string();

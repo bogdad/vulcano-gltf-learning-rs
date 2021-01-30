@@ -25,11 +25,14 @@ use std::iter;
 use std::sync::Arc;
 
 mod game;
-mod hetero_terrain;
+mod camera;
+mod sky;
+mod actor;
+mod world;
+
 mod render;
-mod terrain_generation;
+mod things;
 mod utils;
-mod primitives;
 
 use game::Game;
 use render::Model;

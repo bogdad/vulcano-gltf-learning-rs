@@ -8,7 +8,7 @@ use cgmath::{Matrix4, Point3, Rad, Vector3};
 use rand;
 use rand_distr::{Distribution, UnitSphere};
 
-use crate::hetero_terrain::hetero_terrain_new_perlin;
+use crate::things::hetero_terrain::hetero_terrain_new_perlin;
 use crate::render::MyMesh;
 use crate::utils::{Face, Vertex};
 
