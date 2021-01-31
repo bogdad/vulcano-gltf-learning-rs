@@ -37,25 +37,24 @@ impl Sky {
 
   pub fn camera_entered(&mut self, pos: &Point3<f32>) {
     let L2 = Sky::L / 2.0;
-    let W2 = Sky::L / 2.0;
-    // 0,o -> (xs + xe)/2
-    //
-    /*
-     * (pos.x - xc)/L , (pos.z - zc)/W ) + (1,1)
-     */
+    let W2 = Sky::W / 2.0;
+    let indices = self.real_inds(pos, Sky::L, Sky::W);
+    if (indices != (0, 0)) {
+
+    }
+    let half_indices = self.real_inds(pos, L2, W2);
+    if half_indices != (0, 0) {
+
+    }
   }
 
 
-
-  fn get_ind(self, pos: &Point3<f32>) -> (usize, usize) {
+  // indices in the grid. assumption is square [(xs, xe),(zs, ze)] is the central square in the grid
+  fn real_inds(self, pos: &Point3<f32>, l: f32, w: f32) -> (isize, isize) {
     let xc = (self.xs + self.xe)/2.0;
     let zc = (self.zs + self.ze)/2.0;
-    (((pos.x - xc)/Sky::L as isize) + 1, ((pos.z - zc)/Sky::W)  as isize + 1)
+    ((((pos.x - xc)/l) as isize), (((pos.z - zc)/w)  as isize))
   }
-}
-
-fn not_more(x: f32, t: f32) {
-  abs(x - t)
 }
 
 impl Actor for Sky {

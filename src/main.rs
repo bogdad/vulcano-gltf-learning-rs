@@ -1,3 +1,5 @@
+
+
 use vulkano::device::{Device, DeviceExtensions, Queue};
 use vulkano::format::Format;
 use vulkano::framebuffer::{Framebuffer, FramebufferAbstract, RenderPassAbstract, Subpass};
@@ -13,13 +15,17 @@ use vulkano::swapchain::{
 };
 
 use vulkano_win::VkSurfaceBuild;
+use vulkano_text::{DrawText, DrawTextTrait};
 
 use winit::event_loop::EventLoop;
 use winit::window::{Window, WindowBuilder};
 
+
+extern crate futures;
 extern crate vulkano_text;
 extern crate mint;
-use vulkano_text::{DrawText, DrawTextTrait};
+
+use futures::executor::ThreadPoolBuilder;
 
 use std::iter;
 use std::sync::Arc;
@@ -242,6 +248,11 @@ impl Graph {
 }
 
 fn main() {
+  let mut thread_pool_builder = ThreadPoolBuilder::new();
+  thread_pool_builder.name_prefix("background")
+                     .pool_size(2);
+  let thread_pool = thread_pool_builder.create().unwrap();
+
   let event_loop = EventLoop::new();
   let graph = Graph::new(&event_loop);
 
@@ -254,7 +265,7 @@ fn main() {
       reference: None,
   };*/
 
-  let mut game = Game::new(graph);
+  let mut game = Game::new(thread_pool, graph);
   event_loop.run(move |event, _, mut control_flow| game.gloop(event, &mut control_flow));
 }
 

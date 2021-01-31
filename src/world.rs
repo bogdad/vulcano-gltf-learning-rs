@@ -3,6 +3,8 @@ use winit::event::{VirtualKeyCode, KeyboardInput};
 use cgmath::Point3;
 use std::fmt;
 
+use futures::executor::ThreadPool;
+
 use crate::sky::Sky;
 use crate::render::Model;
 use crate::Graph;

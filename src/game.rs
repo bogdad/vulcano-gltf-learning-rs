@@ -3,18 +3,15 @@ use vulkano::buffer::BufferUsage;
 use vulkano::descriptor::descriptor_set::PersistentDescriptorSet;
 use vulkano::swapchain;
 use vulkano::swapchain::AcquireError;
-
 use vulkano::command_buffer::{AutoCommandBufferBuilder, SubpassContents};
 use vulkano::sync;
 use vulkano::sync::{FlushError, GpuFuture};
-
 use vulkano_text::{DrawTextTrait};
-
 use winit::event::{Event, WindowEvent};
 use winit::event_loop::ControlFlow;
-
 use cgmath::{Point3, Vector3};
 
+use futures::executor::ThreadPool;
 use std::sync::Arc;
 
 use crate::vs;
@@ -22,10 +19,10 @@ use crate::Graph;
 use crate::Model;
 use crate::camera::Camera;
 use crate::world::World;
-use crate::sky::Sky;
 use crate::things::primitives::PrimitiveCube;
 
 pub struct Game {
+  thread_pool: ThreadPool,
   graph: Graph,
   camera: Camera,
   world: World,
@@ -36,7 +33,7 @@ pub struct Game {
 }
 
 impl Game {
-  pub fn new(graph: Graph) -> Game {
+  pub fn new(thread_pool: ThreadPool, graph: Graph) -> Game {
     // gltf:
     // "and the default camera sits on the
     // -Z side looking toward the origin with +Y up"
@@ -71,6 +68,7 @@ impl Game {
       CpuBufferPool::<vs::ty::Data>::new(graph.device.clone(), BufferUsage::all());
 
     Game {
+      thread_pool,
       graph,
       camera,
       world,
