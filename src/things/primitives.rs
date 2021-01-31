@@ -1,6 +1,6 @@
 use genmesh::generators::{Cube, IndexedPolygon};
 use genmesh::{Triangulate, MapToVertices, Vertices, Neighbors, Triangle};
-use cgmath::{Matrix4, One, Point3, Vector3, Zero};
+use cgmath::{Matrix4, One, Point3, Vector3};
 use mint::Vector3 as MintVector3;
 
 use crate::render::MyMesh;

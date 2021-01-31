@@ -21,19 +21,19 @@ use crate::camera::Camera;
 use crate::world::World;
 use crate::things::primitives::PrimitiveCube;
 
-pub struct Game {
+pub struct Game<'a> {
   thread_pool: ThreadPool,
   graph: Graph,
   camera: Camera,
-  world: World,
+  world: World<'a>,
   recreate_swapchain: bool,
   models: Vec<Model>,
   uniform_buffer: CpuBufferPool<vs::ty::Data>,
   previous_frame_end: Option<Box<dyn GpuFuture>>,
 }
 
-impl Game {
-  pub fn new(thread_pool: ThreadPool, graph: Graph) -> Game {
+impl Game<'_> {
+  pub fn new(thread_pool: ThreadPool, graph: Graph) -> Game<'static> {
     // gltf:
     // "and the default camera sits on the
     // -Z side looking toward the origin with +Y up"

@@ -160,6 +160,7 @@ impl MyMesh {
   }
 }
 
+#[derive(Clone)]
 pub struct Model {
   vertex: Arc<CpuAccessibleBuffer<[Vertex]>>,
   normals: Arc<CpuAccessibleBuffer<[Normal]>>,

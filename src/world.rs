@@ -3,8 +3,6 @@ use winit::event::{VirtualKeyCode, KeyboardInput};
 use cgmath::Point3;
 use std::fmt;
 
-use futures::executor::ThreadPool;
-
 use crate::sky::Sky;
 use crate::render::Model;
 use crate::Graph;
@@ -30,11 +28,11 @@ impl Mode {
   }
 }
 
-pub struct World {
+pub struct World<'a> {
   pub mode: Mode,
-  sky: Sky,
+  sky: Sky<'a>,
 }
-impl World {
+impl World<'_> {
   pub fn new(graph: &Graph) -> Self {
     let sky = Sky::new(&graph.device, 2.0, 2.0);
     World {
@@ -69,7 +67,7 @@ impl World {
   }
 }
 
-impl fmt::Display for World {
+impl fmt::Display for World<'_> {
   fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
     write!(f, "mode {:?}", self.mode)
   }

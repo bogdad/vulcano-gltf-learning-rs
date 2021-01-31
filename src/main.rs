@@ -15,7 +15,7 @@ use vulkano::swapchain::{
 };
 
 use vulkano_win::VkSurfaceBuild;
-use vulkano_text::{DrawText, DrawTextTrait};
+use vulkano_text::DrawText;
 
 use winit::event_loop::EventLoop;
 use winit::window::{Window, WindowBuilder};
