@@ -39,7 +39,9 @@ mod world;
 mod render;
 mod things;
 mod utils;
+mod executor;
 
+use executor::Executor;
 use game::Game;
 use render::Model;
 use utils::{Normal, Vertex};
@@ -265,8 +267,13 @@ fn main() {
       reference: None,
   };*/
 
-  let mut game = Game::new(thread_pool, graph);
-  event_loop.run(move |event, _, mut control_flow| game.gloop(event, &mut control_flow));
+  let executor = Executor::new(thread_pool);
+
+  let mut game = Game::new(executor, graph);
+  event_loop.run(move |event, _, mut control_flow| {
+    game.tick();
+    game.gloop(event, &mut control_flow)
+  });
 }
 
 fn window_size_dependent_setup(

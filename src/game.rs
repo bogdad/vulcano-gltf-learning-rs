@@ -11,29 +11,29 @@ use winit::event::{Event, WindowEvent};
 use winit::event_loop::ControlFlow;
 use cgmath::{Point3, Vector3};
 
-use futures::executor::ThreadPool;
 use std::sync::Arc;
 
 use crate::vs;
+use crate::executor::Executor;
 use crate::Graph;
 use crate::Model;
 use crate::camera::Camera;
 use crate::world::World;
 use crate::things::primitives::PrimitiveCube;
 
-pub struct Game<'a> {
-  thread_pool: ThreadPool,
+pub struct Game {
+  executor: Executor,
   graph: Graph,
   camera: Camera,
-  world: World<'a>,
+  world: World,
   recreate_swapchain: bool,
   models: Vec<Model>,
   uniform_buffer: CpuBufferPool<vs::ty::Data>,
   previous_frame_end: Option<Box<dyn GpuFuture>>,
 }
 
-impl Game<'_> {
-  pub fn new(thread_pool: ThreadPool, graph: Graph) -> Game<'static> {
+impl Game {
+  pub fn new(executor: Executor, graph: Graph) -> Game {
     // gltf:
     // "and the default camera sits on the
     // -Z side looking toward the origin with +Y up"
@@ -48,7 +48,7 @@ impl Game<'_> {
       speed: 0.1,
     };
 
-    let world = World::new(&graph);
+    let world = World::new(executor.clone(), &graph);
 
     let recreate_swapchain = false;
     let previous_frame_end = Some(sync::now(graph.device.clone()).boxed());
@@ -68,7 +68,7 @@ impl Game<'_> {
       CpuBufferPool::<vs::ty::Data>::new(graph.device.clone(), BufferUsage::all());
 
     Game {
-      thread_pool,
+      executor,
       graph,
       camera,
       world,
@@ -172,6 +172,10 @@ impl Game<'_> {
         self.previous_frame_end = Some(sync::now(self.graph.device.clone()).boxed());
       }
     }
+  }
+
+  pub fn tick(&mut self) {
+    self.world.tick();
   }
 
   pub fn gloop(&mut self, event: Event<()>, control_flow: &mut ControlFlow) {

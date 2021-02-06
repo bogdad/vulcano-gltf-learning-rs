@@ -362,7 +362,7 @@ fn grid_gen(sub_division: i32, mesh_size: i32) -> (Vec<Vertex>, Vec<Face>) {
         y,
         0.0,
         mesh_size,
-        0,
+        1,
         nsize,
         nbasis,
         depth,
@@ -388,7 +388,7 @@ fn grid_gen(sub_division: i32, mesh_size: i32) -> (Vec<Vertex>, Vec<Face>) {
   (verts, faces)
 }
 
-pub fn execute(sub_division: i32, mesh_size: i32) -> MyMesh {
+pub fn execute(sub_division: i32, mesh_size: i32, x: f32, z:f32) -> MyMesh {
   let (verts, faces) = grid_gen(sub_division, mesh_size);
   let vertex: Vec<Point3<f32>> = verts
     .iter()
@@ -425,7 +425,7 @@ pub fn execute(sub_division: i32, mesh_size: i32) -> MyMesh {
     transform,
   };
   res.update_transform_2(
-    Vector3::zero(),
+    Vector3::new(x, 0.0, z),
     Matrix4::from_angle_x(Rad(std::f32::consts::FRAC_PI_2)),
     [5.0, 5.0, 15.0]);
   res
