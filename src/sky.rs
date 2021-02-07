@@ -147,8 +147,8 @@ pub struct Sky {
 impl Sky {
   const X: f32 = 4.0;
   const Z: f32 = 4.0;
-  const X_ROWS: usize = 36;
-  const Z_ROWS: usize = 36;
+  const X_ROWS: usize = 9;
+  const Z_ROWS: usize = 9;
   const MX: usize = 4;
   const MZ: usize = 4;
 

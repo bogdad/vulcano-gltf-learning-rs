@@ -45,7 +45,7 @@ impl Game {
       pos: Point3::new(1.0, -1.0, -1.0),
       front: Vector3::new(0.0, 0.0, 1.0),
       up: Vector3::new(0.0, 1.0, 0.0),
-      speed: 0.1,
+      speed: 0.3,
     };
 
     let world = World::new(executor.clone(), &graph);
