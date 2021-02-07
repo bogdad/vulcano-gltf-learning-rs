@@ -80,7 +80,7 @@ impl Camera {
     let target = self.pos.to_vec() + self.front;
 
     let view = Matrix4::look_at(self.pos, Point3::from_vec(target), self.up);
-    let scale = Matrix4::from_scale(0.5);
+    let scale = Matrix4::from_scale(0.99);
     /*
        mat4 worldview = uniforms.view * uniforms.world;
        v_normal = transpose(inverse(mat3(worldview))) * normal;

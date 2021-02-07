@@ -418,15 +418,15 @@ pub fn execute(sub_division: i32, mesh_size: i32, x: f32, z:f32) -> MyMesh {
       .collect();
   let transform = <Matrix4<f32> as One>::one();
 
-  let mut res = MyMesh {
+  let mut res = MyMesh::new(
     vertex,
     normals,
     index,
     transform,
-  };
+  );
   res.update_transform_2(
     Vector3::new(x, 0.0, z),
     Matrix4::from_angle_x(Rad(std::f32::consts::FRAC_PI_2)),
-    [5.0, 5.0, 15.0]);
+    [1.0, 1.0, 15.0]);
   res
 }

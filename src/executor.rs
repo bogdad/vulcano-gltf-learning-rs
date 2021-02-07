@@ -16,10 +16,9 @@ impl Executor {
     }
   }
 
-  pub fn do_background<Fut>(&self, future: Fut) -> RemoteHandle<<Fut as Future>::Output>
+  pub fn do_background<Fut>(&self, future: Fut) -> RemoteHandle<()>
    where
-    Fut: Future + Send + 'static,
-    <Fut as Future>::Output: Send, {
+    Fut: Future<Output = ()> + Send + 'static, {
     self.thread_pool.spawn_with_handle(future).unwrap()
   }
 

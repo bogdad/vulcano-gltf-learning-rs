@@ -1,76 +1,37 @@
 use vulkano::device::Device;
-use cgmath::{Point3, Vector2, VectorSpace, EuclideanSpace, Zero};
+use cgmath::{Point3, Vector2};
 
-use futures::future::{RemoteHandle, FutureExt, Shared, BoxFuture, ready};
-use futures::{Future};
+use futures::future::{RemoteHandle};
+use futures::executor::block_on;
 use std::sync::Arc;
-use std::mem;
 use std::cmp::Ordering;
-use std::sync::Mutex;
+use std::sync::RwLock;
 
 use crate::actor::Actor;
 use crate::render::{Model};
 use crate::things::terrain_generation;
 use crate::executor::Executor;
 
-pub struct Sky {
-  inner: Arc<Mutex<SkyInner>>,
+
+fn xindex(base:f32, step: isize) -> f32 {
+  Sky::X * (step as f32) + base
 }
 
-impl Sky {
-  pub fn new(device: &Arc<Device>, x: f32, z: f32) -> Self {
-    Sky {
-      inner: Arc::new(Mutex::new(SkyInner::new(device, x, z))),
-    }
-  }
-
-  pub fn get_current(&self) -> Vec<Model> {
-    let locked = self.inner.lock();
-    locked.unwrap().get_current()
-  }
-
-  pub fn tick(&mut self, executor: &Executor) {
-    let locked = self.inner.lock();
-    locked.unwrap().tick(self, executor);
-  }
-
-  pub fn camera_entered(&mut self, pos: &Point3<f32>) {
-    let locked = self.inner.lock();
-    locked.unwrap().camera_entered(pos);
-  }
-}
-
-struct SkyInner {
-  device: Arc<Device>,
-  grid: Vec<Option<Model>>,
-  waiting: Vec<Option<Shared<RemoteHandle<Option<Model>>>>>,
-  x: Vector2<f32>,
-  z: Vector2<f32>,
-  // last seen camera position
-  c: Vector2<f32>,
-  prev_was_half: bool,
-  ordered_cells: Vec<(usize, usize)>,
-}
-
-fn xindex(base:f32, step: usize) -> f32 {
-  SkyInner::X * (step as f32) + base
-}
-
-fn zindex(base:f32, step: usize) -> f32 {
-  SkyInner::Z * (step as f32) + base
+fn zindex(base:f32, step: isize) -> f32 {
+  Sky::Z * (step as f32) + base
 }
 
 fn ii(xi: usize, zi: usize) -> usize {
-   zi * SkyInner::X_ROWS + xi
+   zi * Sky::X_ROWS + xi
 }
 
-fn tii(t: &(usize, usize)) -> usize {
-  ii(t.0, t.1)
+fn tii(t: &(isize, isize)) -> usize {
+  gii(t.0, t.1).unwrap()
 }
 
 fn gii(xi: isize, zi: isize) -> Option<usize> {
-  let (cx, cz) = (crop(xi + SkyInner::MX as isize, SkyInner::X_ROWS),
-    crop(zi + SkyInner::MZ as isize, SkyInner::Z_ROWS));
+  let (cx, cz) = (crop(xi + Sky::MX as isize, Sky::X_ROWS),
+    crop(zi + Sky::MZ as isize, Sky::Z_ROWS));
   if cx == None || cz == None {
     return None;
   }
@@ -88,32 +49,125 @@ fn crop(x: isize, bound: usize) -> Option<usize> {
   Some(x as usize)
 }
 
-impl SkyInner {
+#[derive(Default)]
+struct CacheCellInner {
+  model: Option<Model>,
+}
+
+#[derive(Default)]
+struct CacheCell {
+  inner: Arc<RwLock<CacheCellInner>>,
+  future: Option<RemoteHandle<()>>,
+}
+
+impl CacheCell {
+  fn is_queued(&self) -> bool {
+    self.future.is_some()
+  }
+  fn spawn_region(&mut self, executor: &Executor, device: &Arc<Device>, x: f32, z: f32) {
+    if self.future.is_some() {
+      return;
+    }
+    {
+      let read_locked = self.inner.read().unwrap();
+      if read_locked.model.is_some() {
+        return;
+      }
+    }
+    let weak_device = Arc::downgrade(device);
+    let weak_self_inner = Arc::downgrade(&self.inner);
+    let fut = async move {
+      println!("generated ({:?},{:?})", x, z);
+      if let Some(device) = weak_device.upgrade() {
+        println!("device upgraded");
+        if let Some(self_inner) = weak_self_inner.upgrade() {
+          println!("selv upgraded");
+          let mut locked = self_inner.write().unwrap();
+          if locked.model.is_some() {
+            return;
+          }
+          let res = terrain_generation::execute(32, Sky::X as i32, x + Sky::X/2.0, z + Sky::Z/2.0).get_buffers(&device);
+          locked.model = Some(res);
+        }
+      }
+    };
+    let pinned = Box::pin(fut);
+    self.future = Some(executor.do_background(pinned));
+  }
+
+  fn block(&mut self) {
+    {
+      let read_locked = self.inner.read().unwrap();
+      if read_locked.model.is_some() {
+        return;
+      }
+    }
+    let future = self.future.take();
+    block_on(future.unwrap())
+  }
+
+  fn create_block(&mut self, executor: &Executor, device: &Arc<Device>, x: f32, z: f32) {
+    {
+    let peaked =self.inner.read().unwrap();
+      if peaked.model.is_some() {
+        return;
+      }
+    }
+    println!("blocking on sky");
+    self.spawn_region(executor, device, x, z);
+    self.block();
+  }
+
+  fn status(&self) -> String {
+    let model = {
+      let read_locked = self.inner.read().unwrap();
+      read_locked.model.is_some()
+    };
+    format!("cache cell model {:?} futures {:?}", model, self.future.is_some())
+  }
+
+  fn model(&self) -> Option<Model> {
+    let read_locked = self.inner.read().unwrap();
+    read_locked.model.clone()
+  }
+}
+
+pub struct Sky {
+  device: Arc<Device>,
+  cache: Vec<CacheCell>,
+  x: Vector2<f32>,
+  z: Vector2<f32>,
+  // last seen camera position
+  c: Vector2<f32>,
+  prev_was_half: bool,
+  ordered_cells: Vec<(isize, isize)>,
+}
+
+
+impl Sky {
   const X: f32 = 4.0;
   const Z: f32 = 4.0;
-  const X_ROWS: usize = 9;
-  const Z_ROWS: usize = 9;
+  const X_ROWS: usize = 36;
+  const Z_ROWS: usize = 36;
   const MX: usize = 4;
   const MZ: usize = 4;
 
 
   pub fn new(device: &Arc<Device>, x: f32, z: f32) -> Self {
-    let mut grid: Vec<Option<Model>> = vec![];
-    let mut waiting: Vec<Option<Shared<RemoteHandle<Option<Model>>>>> = vec![];
-    for _i in 0..(SkyInner::X_ROWS * SkyInner::Z_ROWS) {
-      grid.push(None);
-      waiting.push(None);
+    let mut cache: Vec<CacheCell> = vec![];
+    for _i in 0..(Sky::X_ROWS * Sky::Z_ROWS) {
+      cache.push(CacheCell::default());
     }
-    let mut ordered: Vec<(usize, usize)> = vec![];
-    for zi in 0..SkyInner::X_ROWS {
-      for xi in 0..SkyInner::Z_ROWS {
-        let try_cell = (xi, zi);
+    let mut ordered: Vec<(isize, isize)> = vec![];
+    for zi in 0..Sky::X_ROWS {
+      for xi in 0..Sky::Z_ROWS {
+        let try_cell:(isize, isize) = (xi as isize - Sky::MX as isize, zi as isize - Sky::MZ as isize);
         ordered.push(try_cell);
       }
     }
     ordered.sort_by(|a, b| {
-      let s_a = a.0 + a.1;
-      let s_b = b.0 + b.1;
+      let s_a = (a.0 + a.1).abs();
+      let s_b = (b.0 + b.1).abs();
       if s_a < s_b {
         return Ordering::Less;
       }
@@ -127,48 +181,33 @@ impl SkyInner {
       return a.1.cmp(&b.1);
     });
     println!("odered ordered {:?}", ordered);
-    SkyInner {
+    Sky {
       device: Arc::clone(device),
-      grid,
-      waiting,
-      x: Vector2::new(x, x + SkyInner::X),
-      z: Vector2::new(z, z + SkyInner::Z),
+      cache,
+      x: Vector2::new(x, x + Sky::X),
+      z: Vector2::new(z, z + Sky::Z),
       c: Vector2::new(0.0, 0.0),
       prev_was_half: false,
       ordered_cells: ordered,
     }
   }
 
-  pub fn tick(&mut self, sky: &Sky, executor: &Executor) {
+  pub fn tick(&mut self, executor: &Executor) {
     let ahead_div = 3.0;
-    let x_ahead = SkyInner::X / ahead_div;
-    let z_ahead = SkyInner::Z / ahead_div;
+    let x_ahead = Sky::X / ahead_div;
+    let z_ahead = Sky::Z / ahead_div;
 
-    let peaked = &self.grid[giiu(0, 0)];
-    if peaked.is_none() {
-      let mut prev = mem::replace(&mut self.waiting[giiu(0, 0)], None);
-      if prev.is_none() {
-        self.waiting[giiu(0, 0)] = Some(
-          executor.do_background(self.spawn_region(sky, self.x.x, self.z.x, false))
-          .shared());
-        prev = mem::replace(&mut self.waiting[giiu(0, 0)], None);
-      }
-      println!("blocking on sky");
-      self.grid[giiu(0, 0)] = executor.wait(prev.unwrap());
-      self.waiting[giiu(0, 0)] = None;
-    }
-    let indices = self.real_inds(SkyInner::X, SkyInner::Z);
+    self.cache[giiu(0, 0)].create_block(executor, &self.device, self.x.x, self.z.x);
+
+    let indices = self.real_inds(Sky::X, Sky::Z);
     let half_indices = self.real_inds(x_ahead, z_ahead);
     if half_indices != (0, 0) {
       // spawn ahead of time model creation
       for try_cell in &self.ordered_cells {
-        if self.waiting[tii(try_cell)].is_none() {
+        if !self.cache[tii(try_cell)].is_queued() {
           let xx = xindex(self.x.x, try_cell.0);
           let zz = zindex(self.z.x, try_cell.1);
-          self.waiting[tii(try_cell)] = Some(
-            executor.do_background(
-              self.spawn_region(sky, xx, zz, true)).shared()
-            );
+          self.cache[tii(try_cell)].spawn_region(executor, &self.device, xx, zz);
         }
       }
     } else {
@@ -181,64 +220,59 @@ impl SkyInner {
         // move each item in the grid in the right direction
         // negative index means we are moving existing items positively
         // when we are moving existing items positively we start from furthest
-        println!("grid {:?}", self.grid.iter().map(|e| e.is_some()).collect::<Vec<_>>());
-        println!("waiting {:?}", self.waiting.iter().map(|e| e.is_some()).collect::<Vec<_>>());
         let zrange:Vec<usize> = if indices.1 < 0 {
-          (0..SkyInner::Z_ROWS).rev().collect()}
+          (0..Sky::Z_ROWS).rev().collect()}
           else {
-            (0..SkyInner::Z_ROWS).collect()};
+            (0..Sky::Z_ROWS).collect()};
         for zt in zrange {
           let xrange:Vec<usize> = if indices.0 < 0 {
-            (0..SkyInner::X_ROWS).rev().collect()}
+            (0..Sky::X_ROWS).rev().collect()}
             else {
-              (0..SkyInner::X_ROWS).collect()};
+              (0..Sky::X_ROWS).collect()};
           for xt in xrange {
-            let (zs, xs) = (crop(zt as isize + indices.1, SkyInner::Z_ROWS),
-              crop(xt as isize + indices.0, SkyInner::X_ROWS));
+            let (xs, zs) = (crop(xt as isize + indices.0, Sky::X_ROWS),
+              crop(zt as isize + indices.1, Sky::Z_ROWS));
             println!("moving {:?} {:?}", (xt, zt), (xs, zs));
             if zs == None || xs == None {
-              self.grid[ii(xt, zt)] = None;
-              self.waiting[ii(xt, zt)] = None;
+              self.cache[ii(xt, zt)] = Default::default();
             } else {
-              self.grid.swap(ii(xt, zt), ii(xs.unwrap(), zs.unwrap()));
-              self.waiting.swap(ii(xt, zt), ii(xs.unwrap(), zs.unwrap()));
+              self.cache.swap(ii(xt, zt), ii(xs.unwrap(), zs.unwrap()));
             }
           }
         }
-        println!("grid {:?}", self.grid.iter().map(|e| e.is_some()).collect::<Vec<_>>());
-        println!("waiting {:?}", self.waiting.iter().map(|e| e.is_some()).collect::<Vec<_>>());
+        println!("cache {:?}", self.cache.iter().map(|e| e.status()).collect::<Vec<_>>());
 
-        self.x += Vector2::new(SkyInner::X * indices.0 as f32, SkyInner::X * indices.0 as f32);
-        self.z += Vector2::new(SkyInner::Z * indices.1 as f32, SkyInner::Z * indices.1 as f32);
+        self.x += Vector2::new(Sky::X * indices.0 as f32, Sky::X * indices.0 as f32);
+        self.z += Vector2::new(Sky::Z * indices.1 as f32, Sky::Z * indices.1 as f32);
         println!("changing x {:?} z {:?}", self.x, self.z);
     }
   }
 
 
   pub fn get_current(&self) -> Vec<Model> {
-    let mut res: Vec<Model> = vec![self.grid[giiu(0, 0)].as_ref().unwrap().clone()];
-    if let Some(elem) = &self.grid[giiu(1, 0)] {
+    let mut res: Vec<Model> = vec![self.cache[giiu(0, 0)].model().as_ref().unwrap().clone()];
+    if let Some(elem) = &self.cache[giiu(1, 0)].model() {
       res.push(elem.clone());
     };
-    if let Some(elem) = &self.grid[giiu(-1, 0)] {
+    if let Some(elem) = &self.cache[giiu(-1, 0)].model() {
       res.push(elem.clone());
     };
-    if let Some(elem) = &self.grid[giiu(0, 1)] {
+    if let Some(elem) = &self.cache[giiu(0, 1)].model() {
       res.push(elem.clone());
     };
-    if let Some(elem) = &self.grid[giiu(0, -1)] {
+    if let Some(elem) = &self.cache[giiu(0, -1)].model() {
       res.push(elem.clone());
     };
-    if let Some(elem) = &self.grid[giiu(-1, -1)] {
+    if let Some(elem) = &self.cache[giiu(-1, -1)].model() {
       res.push(elem.clone());
     };
-    if let Some(elem) = &self.grid[giiu(-1, 1)] {
+    if let Some(elem) = &self.cache[giiu(-1, 1)].model() {
       res.push(elem.clone());
     };
-    if let Some(elem) = &self.grid[giiu(1, -1)] {
+    if let Some(elem) = &self.cache[giiu(1, -1)].model() {
       res.push(elem.clone());
     };
-    if let Some(elem) = &self.grid[giiu(1, 1)] {
+    if let Some(elem) = &self.cache[giiu(1, 1)].model() {
       res.push(elem.clone());
     };
     res
@@ -256,45 +290,8 @@ impl SkyInner {
     (((self.c.x - gc.x)/l) as isize, ((self.c.y - gc.y)/l) as isize)
   }
 
-  fn spawn_region(&self, sky: &Sky, x: f32, z: f32, call_back: bool) -> Shared<impl Future<Output=Option<Model>>> {
-    let weak_device = Arc::downgrade(&self.device);
-    let weak_self = Arc::downgrade(&sky.inner);
-    let fut = async move {
-      println!("generated ({:?},{:?})", x, z);
-      if let Some(device) = weak_device.upgrade() {
-        println!("device upgraded");
-        if let Some(selv) = weak_self.upgrade() {
-          println!("selv upgraded");
-          let res = terrain_generation::execute(32, SkyInner::X as i32, x, z).get_buffers(&device);
-          if call_back {
-            accept_results(selv);
-          }
-          Some(res)
-        } else {
-          None
-        }
-      } else {
-        None
-      }
-    };
-    fut.shared()
-  }
-}
 
-  fn accept_results(sky: Arc<Mutex<SkyInner>>) {
-    let mut selv = sky.lock().unwrap();
-    for zi in 0..SkyInner::X_ROWS {
-      for xi in 0..SkyInner::Z_ROWS {
-        println!("trying waiting");
-        if let Some(shared) = &selv.waiting[ii(xi, zi)] {
-          if let Some(model_opt) = shared.peek() {
-            println!("results accepted");
-            selv.grid[ii(xi, zi)] = model_opt.clone();
-          }
-        }
-      }
-    }
-  }
+}
 
 impl Actor for Sky {
   fn get_model(&self, device: &Arc<Device>) ->  Vec<Model> {
