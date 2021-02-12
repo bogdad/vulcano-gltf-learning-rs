@@ -54,10 +54,10 @@ mod vs {
 
 layout(location = 0) in vec3 position;
 layout(location = 1) in vec3 normal;
-layout(location = 2) in vec2 tex2;
+//layout(location = 2) in vec2 tex2;
 
 layout(location = 0) out vec3 v_normal;
-layout(location = 1) out vec2 v_tex2;
+//layout(location = 1) out vec2 v_tex2;
 
 layout(set = 0, binding = 0) uniform Data {
     mat4 world;
@@ -69,7 +69,7 @@ void main() {
     mat4 worldview = uniforms.view * uniforms.world;
     //v_normal = transpose(inverse(mat3(worldview))) * normal;
     v_normal = mat3(worldview) * normal;
-    v_tex2 = tex2;
+    //v_tex2 = tex2;
     gl_Position = uniforms.proj * worldview * vec4(position, 1.0);
 }
 
@@ -84,22 +84,22 @@ mod fs {
 #version 450
 
 layout(location = 0) in vec3 v_normal;
-layout(location = 1) in vec2 v_tex2;
+//layout(location = 1) in vec2 v_tex2;
 layout(location = 0) out vec4 f_color;
 
 const vec3 LIGHT = vec3(0.0, 0.0, 1.0);
 
-layout(set = 0, binding = 0) uniform sampler2D tex;
+//layout(set = 0, binding = 0) uniform sampler2D tex;
 
 void main() {
     float brightness = dot(normalize(v_normal), normalize(LIGHT));
     vec3 dark_color = vec3(0.6, 0.6, 0.6);
     vec3 regular_color = vec3(1.0, 1.0, 1.0);
-    if (v_tex2.x < 0 || v_tex2.y < 0) {
+    //if (v_tex2.x < 0 || v_tex2.y < 0) {
       f_color = vec4(mix(dark_color, regular_color, brightness), 1.0);
-    } else {
-      f_color = texture(tex, v_tex2);
-    }
+    //} else {
+    //  f_color = texture(tex, v_tex2);
+    //}
 }
        "
   }

@@ -18,20 +18,25 @@ impl Image {
     for chr in text.chars() {
       let glyph: Glyph = font.glyph_id(chr).with_scale_and_position(24.0, point(0.0, 0.0));
       let q = font.outline_glyph(glyph).unwrap();
-      x += q.px_bounds().max.x;
+      //println!("yyyyyyyyyy {:?}", q.px_bounds());
+      x += q.px_bounds().max.x - q.px_bounds().min.x;
       if y <= q.px_bounds().max.y {
-        y = q.px_bounds().max.y
+        y = q.px_bounds().max.y - q.px_bounds().min.y;
       }
     }
     let w = x as u32;
     let h = y as u32;
+    //println!("xxxxxxxxxx {} {}", w, h);
     let mut image = RgbImage::new(w, h);
     x = 0.0;
     for chr in text.chars() {
-      let glyph: Glyph = font.glyph_id(chr).with_scale_and_position(24.0, point(x, 0.0));
+      let glyph: Glyph = font.glyph_id(chr).with_scale_and_position(24.0, point(0.0, 0.0));
       let q = font.outline_glyph(glyph).unwrap();
-      x = q.px_bounds().max.x;
-      q.draw(|x, y, c| { image.put_pixel(x, y, Rgb([(255.0 * c) as u8, 0, 0])) });
+      q.draw(|xx, yy, c| {
+        //println!("zzzzzzzzzz {:?}", (xx, yy, c));
+        image.put_pixel(x as u32 + xx, yy, Rgb([(255.0 * c) as u8, 0, 0]))
+      });
+      x += q.px_bounds().max.x - q.px_bounds().min.x;
     }
 
     Image {
@@ -75,7 +80,7 @@ impl Texts {
     }
   }
 
-  pub fn text(str: String) -> Texture {
+  /*pub fn text(str: String) -> Texture {
     // build texture for string
-  }
+  }*/
 }
