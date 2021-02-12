@@ -14,7 +14,6 @@ use cgmath::{InnerSpace, Matrix4, Matrix3, Point3, SquareMatrix, Quaternion, Vec
 use std::path::Path;
 use std::sync::Arc;
 use std::ops::MulAssign;
-use std::fmt;
 
 use crate::utils::{Normal, Vertex};
 

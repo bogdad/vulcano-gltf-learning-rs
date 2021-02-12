@@ -19,7 +19,8 @@ use crate::Graph;
 use crate::Model;
 use crate::camera::Camera;
 use crate::world::World;
-use crate::things::primitives::PrimitiveCube;
+use crate::things::primitives::{PrimitiveCube, PrimitiveTriangle};
+use crate::things::texts::Texts;
 
 pub struct Game {
   executor: Executor,
@@ -30,6 +31,7 @@ pub struct Game {
   models: Vec<Model>,
   uniform_buffer: CpuBufferPool<vs::ty::Data>,
   previous_frame_end: Option<Box<dyn GpuFuture>>,
+  texts: Texts,
 }
 
 impl Game {
@@ -42,7 +44,7 @@ impl Game {
     // x = left/right
     // z = close/far
     let camera = Camera {
-      pos: Point3::new(1.0, -1.0, -1.0),
+      pos: Point3::new(0.0, -1.0, -1.0),
       front: Vector3::new(0.0, 0.0, 1.0),
       up: Vector3::new(0.0, 1.0, 0.0),
       speed: 0.3,
@@ -62,10 +64,14 @@ impl Game {
       //Model::from_gltf(Path::new("models/box.glb"), &device),
       //Model::from_gltf(Path::new("models/center.glb"), &device),
       PrimitiveCube::new(2.0, 4.0, 8.0, (-4.0, 0.0, 0.0)).mesh.get_buffers(&graph.device),
+      PrimitiveTriangle::new().mesh.get_buffers(&graph.device),
     ];
 
     let uniform_buffer =
       CpuBufferPool::<vs::ty::Data>::new(graph.device.clone(), BufferUsage::all());
+
+    let strs = (0..100).map(|i| i.to_string()).collect();
+    let texts = Texts::build(strs);
 
     Game {
       executor,
@@ -76,6 +82,7 @@ impl Game {
       models,
       uniform_buffer,
       previous_frame_end,
+      texts,
     }
   }
 

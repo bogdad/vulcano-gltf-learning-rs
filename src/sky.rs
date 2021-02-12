@@ -251,30 +251,13 @@ impl Sky {
 
   pub fn get_current(&self) -> Vec<Model> {
     let mut res: Vec<Model> = vec![self.cache[giiu(0, 0)].model().as_ref().unwrap().clone()];
-    if let Some(elem) = &self.cache[giiu(1, 0)].model() {
-      res.push(elem.clone());
-    };
-    if let Some(elem) = &self.cache[giiu(-1, 0)].model() {
-      res.push(elem.clone());
-    };
-    if let Some(elem) = &self.cache[giiu(0, 1)].model() {
-      res.push(elem.clone());
-    };
-    if let Some(elem) = &self.cache[giiu(0, -1)].model() {
-      res.push(elem.clone());
-    };
-    if let Some(elem) = &self.cache[giiu(-1, -1)].model() {
-      res.push(elem.clone());
-    };
-    if let Some(elem) = &self.cache[giiu(-1, 1)].model() {
-      res.push(elem.clone());
-    };
-    if let Some(elem) = &self.cache[giiu(1, -1)].model() {
-      res.push(elem.clone());
-    };
-    if let Some(elem) = &self.cache[giiu(1, 1)].model() {
-      res.push(elem.clone());
-    };
+    for (i, j) in &self.ordered_cells {
+      if i.abs() + j.abs() < 4 {
+        if let Some(elem) = &self.cache[giiu(*i, *j)].model() {
+          res.push(elem.clone());
+        };
+      }
+    }
     res
   }
 

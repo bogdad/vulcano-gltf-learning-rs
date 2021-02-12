@@ -51,3 +51,35 @@ impl PrimitiveCube {
     }
   }
 }
+
+pub struct PrimitiveTriangle {
+  pub mesh: MyMesh,
+}
+
+impl PrimitiveTriangle {
+  pub fn new() -> Self {
+
+    let vertex: Vec<Point3<f32>> = vec![
+      Point3::new(0.0, 0.0, 0.0),
+      Point3::new(0.0, -1.0, 0.0),
+      Point3::new(1.0, 0.0, 0.0),
+    ];
+
+    let index: Vec<u32> = vec![0, 1, 2];
+
+    let normals: Vec<Point3<f32>> = vec![
+      Point3::new(0.0, 0.0, -1.0),
+      Point3::new(0.0, 0.0, -1.0),
+      Point3::new(0.0, 0.0, -1.0),
+    ];
+
+    let transform = Matrix4::one();
+
+    let mut mesh = MyMesh::new(vertex, normals, index, transform);
+    mesh.update_transform_2(Vector3::from([0.0, 0.0, 0.0]), Matrix4::one(), [10.0, 10.0, 10.0]);
+    println!("mesh {:?}", mesh);
+    PrimitiveTriangle {
+      mesh: mesh
+    }
+  }
+}
