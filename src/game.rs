@@ -1,9 +1,12 @@
 use vulkano::buffer::cpu_pool::CpuBufferPool;
 use vulkano::buffer::BufferUsage;
-use vulkano::descriptor::descriptor_set::PersistentDescriptorSet;
+use vulkano::command_buffer::{AutoCommandBufferBuilder, SubpassContents};
+use vulkano::descriptor::descriptor_set::{PersistentDescriptorSet, PersistentDescriptorSetBuf};
+use vulkano::image::ImmutableImage;
+use vulkano::format::Format;
+use vulkano::sampler::{Filter, MipmapMode, Sampler, SamplerAddressMode};
 use vulkano::swapchain;
 use vulkano::swapchain::AcquireError;
-use vulkano::command_buffer::{AutoCommandBufferBuilder, SubpassContents};
 use vulkano::sync;
 use vulkano::sync::{FlushError, GpuFuture};
 use vulkano_text::{DrawTextTrait};
@@ -21,6 +24,8 @@ use crate::camera::Camera;
 use crate::world::World;
 use crate::things::primitives::{PrimitiveCube, PrimitiveTriangle};
 use crate::things::texts::Texts;
+use crate::render::textures::Textures;
+use crate::sign_post::SignPost;
 
 pub struct Game {
   executor: Executor,
@@ -32,6 +37,9 @@ pub struct Game {
   uniform_buffer: CpuBufferPool<vs::ty::Data>,
   previous_frame_end: Option<Box<dyn GpuFuture>>,
   texts: Texts,
+  textures: Textures,
+  sampler: Option<Arc<Sampler>>,
+  texture: Option<Arc<ImmutableImage<Format>>>
 }
 
 impl Game {
@@ -50,10 +58,14 @@ impl Game {
       speed: 0.3,
     };
 
-    let world = World::new(executor.clone(), &graph);
+    let sign_posts = vec![
+      SignPost::new(&graph.device, Point3::new(-10.0, 0.0, 0.0), "100".to_string())
+    ];
+
+    let world = World::new(executor.clone(), &graph, sign_posts);
 
     let recreate_swapchain = false;
-    let previous_frame_end = Some(sync::now(graph.device.clone()).boxed());
+
 
     let models = vec![
       //Model::from_gltf(Path::new("models/creature.glb"), &device),
@@ -64,14 +76,18 @@ impl Game {
       //Model::from_gltf(Path::new("models/box.glb"), &device),
       //Model::from_gltf(Path::new("models/center.glb"), &device),
       PrimitiveCube::new(2.0, 4.0, 8.0, (-4.0, 0.0, 0.0)).mesh.get_buffers(&graph.device),
-      PrimitiveTriangle::new().mesh.get_buffers(&graph.device),
+      PrimitiveTriangle::new(Point3::new(0.0, 0.0, 0.0)).mesh.get_buffers(&graph.device),
     ];
 
     let uniform_buffer =
       CpuBufferPool::<vs::ty::Data>::new(graph.device.clone(), BufferUsage::all());
 
-    let strs = (0..100).map(|i| i.to_string()).collect();
+    let strs = (-100..100).map(|i| i.to_string()).collect();
     let texts = Texts::build(strs);
+
+    let textures = Textures::new(&texts);
+
+    let previous_frame_end = Some(sync::now(graph.device.clone()).boxed());
 
     Game {
       executor,
@@ -83,7 +99,32 @@ impl Game {
       uniform_buffer,
       previous_frame_end,
       texts,
+      textures,
+      sampler: None,
+      texture: None,
     }
+  }
+
+  pub fn init(&mut self) {
+    let (texture, future) = self.textures.draw(&self.graph.queue);
+    self.previous_frame_end = Some(future);
+
+    let sampler = Sampler::new(
+        self.graph.device.clone(),
+        Filter::Linear,
+        Filter::Linear,
+        MipmapMode::Nearest,
+        SamplerAddressMode::Repeat,
+        SamplerAddressMode::Repeat,
+        SamplerAddressMode::Repeat,
+        0.0,
+        1.0,
+        0.0,
+        0.0,
+    )
+    .unwrap();
+    self.sampler = Some(sampler);
+    self.texture = Some(texture);
   }
 
   fn draw(&mut self) {
@@ -101,6 +142,8 @@ impl Game {
     let set = Arc::new(
       PersistentDescriptorSet::start(layout.clone())
         .add_buffer(uniform_buffer_subbuffer)
+        .unwrap()
+        .add_sampled_image(self.texture.as_ref().unwrap().clone(), self.sampler.as_ref().unwrap().clone())
         .unwrap()
         .build()
         .unwrap(),

@@ -6,9 +6,10 @@ use cgmath::Point3;
 use std::fmt;
 
 use crate::sky::Sky;
-use crate::render::Model;
+use crate::render::model::Model;
 use crate::Graph;
 use crate::executor::Executor;
+use crate::sign_post::SignPost;
 
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub enum Mode {
@@ -35,15 +36,17 @@ pub struct World {
   executor: Executor,
   pub mode: Mode,
   sky: Sky,
+  sign_posts: Vec<SignPost>,
 }
 impl World {
 
-  pub fn new(executor: Executor, graph: &Graph) -> Self {
+  pub fn new(executor: Executor, graph: &Graph, sign_posts: Vec<SignPost>) -> Self {
     let sky = Sky::new(&graph.device, 0.0, 0.0);
     World {
       executor,
       mode: Mode::MoveCameraPos,
       sky,
+      sign_posts,
     }
   }
 
@@ -76,7 +79,12 @@ impl World {
   }
 
   pub fn get_models(&self) -> Vec<Model> {
-    self.sky.get_current()
+    let mut res = vec![];
+    res.extend(self.sky.get_current());
+    for sign_post in &self.sign_posts {
+      res.push(sign_post.get_model().clone());
+    }
+    res
   }
 
 

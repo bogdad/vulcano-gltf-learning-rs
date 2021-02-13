@@ -80,7 +80,7 @@ impl Texts {
     }
   }
 
-  /*pub fn text(str: String) -> Texture {
-    // build texture for string
-  }*/
+  pub fn texture(&self) -> RgbImage {
+    self.image.clone()
+  }
 }

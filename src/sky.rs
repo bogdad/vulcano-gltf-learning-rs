@@ -8,7 +8,7 @@ use std::cmp::Ordering;
 use std::sync::RwLock;
 
 use crate::actor::Actor;
-use crate::render::{Model};
+use crate::render::model::Model;
 use crate::things::terrain_generation;
 use crate::executor::Executor;
 

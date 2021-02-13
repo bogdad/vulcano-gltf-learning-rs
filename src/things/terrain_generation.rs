@@ -9,7 +9,7 @@ use rand;
 use rand_distr::{Distribution, UnitSphere};
 
 use crate::things::hetero_terrain::hetero_terrain_new_perlin;
-use crate::render::MyMesh;
+use crate::render::mymesh::MyMesh;
 use crate::utils::{Face, Vertex};
 
 fn landscape_gen(
@@ -378,6 +378,7 @@ fn grid_gen(sub_division: i32, mesh_size: i32) -> (Vec<Vertex>, Vec<Face>) {
       edgeloop_cur.push(verts.len() as u32);
       verts.push(Vertex {
         position: (x, y, z),
+        tex: (-1.0, -1.0),
       });
     }
     if edgeloop_prev.len() > 0 {

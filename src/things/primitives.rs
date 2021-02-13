@@ -3,7 +3,9 @@ use genmesh::{Triangulate, MapToVertices, Vertices, Neighbors, Triangle};
 use cgmath::{Matrix4, One, Point3, Vector3};
 use mint::Vector3 as MintVector3;
 
-use crate::render::MyMesh;
+use std::sync::Arc;
+
+use crate::render::mymesh::MyMesh;
 
 pub struct PrimitiveCube {
   pub mesh: MyMesh,
@@ -12,9 +14,6 @@ pub struct PrimitiveCube {
 impl PrimitiveCube {
   pub fn new(x: f32, y: f32, z: f32, xx: (f32, f32, f32)) -> PrimitiveCube {
     let cube = Cube::new();
-
-
-
     let vertex: Vec<Point3<f32>> = cube
       .clone()
       .vertex(|v| Point3::<f32>::new(v.pos.x, v.pos.y, v.pos.z))
@@ -57,12 +56,12 @@ pub struct PrimitiveTriangle {
 }
 
 impl PrimitiveTriangle {
-  pub fn new() -> Self {
+  pub fn new(pos: Point3<f32>) -> Self {
 
     let vertex: Vec<Point3<f32>> = vec![
-      Point3::new(0.0, 0.0, 0.0),
-      Point3::new(0.0, -1.0, 0.0),
-      Point3::new(1.0, 0.0, 0.0),
+      pos + Vector3::new(0.0, 0.0, 0.0),
+      pos + Vector3::new(0.0, -1.0, 0.0),
+      pos + Vector3::new(1.0, 0.0, 0.0),
     ];
 
     let index: Vec<u32> = vec![0, 1, 2];

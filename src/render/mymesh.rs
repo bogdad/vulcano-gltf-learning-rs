@@ -1,9 +1,6 @@
 use vulkano::buffer::{BufferUsage, CpuAccessibleBuffer};
-use vulkano::command_buffer::pool::standard::StandardCommandPoolBuilder;
-use vulkano::command_buffer::{AutoCommandBufferBuilder, DynamicState};
-use vulkano::descriptor::descriptor_set::DescriptorSetsCollection;
 use vulkano::device::Device;
-use vulkano::pipeline::GraphicsPipelineAbstract;
+
 
 use gltf::scene::Node;
 
@@ -16,6 +13,7 @@ use std::sync::Arc;
 use std::ops::MulAssign;
 
 use crate::utils::{Normal, Vertex};
+use crate::render::model::Model;
 
 #[derive(Debug)]
 pub struct MyMesh {
@@ -102,6 +100,7 @@ impl MyMesh {
       .map(|pos| self.transform.transform_point(*pos))
       .map(|pos| Vertex {
         position: (pos[0], pos[1], pos[2]),
+        tex: (-1.0, -1.0),
       })
       .collect();
     let vertices = vertices_vec.iter().cloned();
@@ -167,50 +166,6 @@ impl MyMesh {
   }
 }
 
-#[derive(Clone, Debug)]
-pub struct Model {
-  vertex: Arc<CpuAccessibleBuffer<[Vertex]>>,
-  normals: Arc<CpuAccessibleBuffer<[Normal]>>,
-  index: Arc<CpuAccessibleBuffer<[u32]>>,
-}
-
-impl Model {
-  pub fn new(
-    vertex: Arc<CpuAccessibleBuffer<[Vertex]>>,
-    normals: Arc<CpuAccessibleBuffer<[Normal]>>,
-    index: Arc<CpuAccessibleBuffer<[u32]>>,
-  ) -> Model {
-    Model {
-      vertex,
-      normals,
-      index,
-    }
-  }
-
-  pub fn draw_indexed<S>(
-    &self,
-    builder: &mut AutoCommandBufferBuilder<StandardCommandPoolBuilder>,
-    pipeline: Arc<dyn GraphicsPipelineAbstract + Send + Sync>,
-    set: S,
-  ) where
-    S: DescriptorSetsCollection,
-  {
-    builder
-      .draw_indexed(
-        pipeline.clone(),
-        &DynamicState::none(),
-        vec![self.vertex.clone(), self.normals.clone()],
-        self.index.clone(),
-        set,
-        (),
-      )
-      .unwrap();
-  }
-
-  pub fn from_gltf(path: &Path, device: &Arc<Device>) -> Model {
-    MyMesh::from_gltf(path).get_buffers(device)
-  }
-}
 
 /// Convert a rotation matrix to an equivalent quaternion.
 fn from_matrix(m: Matrix3<f32>) -> Quaternion<f32> {
