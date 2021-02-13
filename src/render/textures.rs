@@ -31,10 +31,10 @@ impl Textures {
 
         ImmutableImage::from_iter(
             self.texture.pixels().map(|p| (
-              p.to_rgba().channels4().0 as f32,
-              p.to_rgba().channels4().1 as f32,
-              p.to_rgba().channels4().2 as f32,
-              p.to_rgba().channels4().3 as f32
+              p.to_rgba().channels4().0,
+              p.to_rgba().channels4().1,
+              p.to_rgba().channels4().2,
+              p.to_rgba().channels4().3,
               )),
             dimensions,
             MipmapsCount::One,

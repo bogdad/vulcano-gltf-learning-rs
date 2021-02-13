@@ -6,7 +6,7 @@ use gltf::scene::Node;
 
 //use cgmath::prelude::*;
 use cgmath::Transform;
-use cgmath::{InnerSpace, Matrix4, Matrix3, Point3, SquareMatrix, Quaternion, Vector3};
+use cgmath::{InnerSpace, Matrix4, Matrix3, Point3, Point2, SquareMatrix, Quaternion, Vector3};
 
 use std::path::Path;
 use std::sync::Arc;
@@ -18,6 +18,7 @@ use crate::render::model::Model;
 #[derive(Debug)]
 pub struct MyMesh {
   pub vertex: Vec<Point3<f32>>,
+  pub tex: Vec<Point2<f32>>,
   pub normals: Vec<Point3<f32>>,
   pub index: Vec<u32>,
   pub transform: Matrix4<f32>,
@@ -26,6 +27,7 @@ pub struct MyMesh {
 impl MyMesh {
   pub fn new(
     vertex: Vec<cgmath::Point3<f32>>,
+    tex: Vec<cgmath::Point2<f32>>,
     normals: Vec<cgmath::Point3<f32>>,
     index: Vec<u32>,
     transform: Matrix4<f32>,
@@ -39,6 +41,7 @@ impl MyMesh {
     println!("mymesh: x ({}, {}) y ({}, {}) z ({}, {})", min_x, max_x, min_y, max_y, min_z, max_z);
     MyMesh {
       vertex,
+      tex,
       normals,
       index,
       transform,
@@ -66,6 +69,8 @@ impl MyMesh {
         })
         .collect::<Vec<_>>()
     };
+    let tex = (0..vertex.len()).map(|i|Point2::new(-1.0, -1.0))
+      .collect();
     let normals = {
       let iter = reader.read_normals().unwrap_or_else(|| {
         panic!(
@@ -90,7 +95,7 @@ impl MyMesh {
     // let (translation, rotation, scale) = node.transform().decomposed();
     // println!("t {:?} r {:?} s {:?}", translation, rotation, scale);
 
-    MyMesh::new(vertex, normals, index.unwrap(), transform)
+    MyMesh::new(vertex, tex, normals, index.unwrap(), transform)
   }
 
   pub fn get_buffers(&self, device: &Arc<Device>) -> Model {

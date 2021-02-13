@@ -4,7 +4,7 @@
 use genmesh::{Polygon, Quad, Triangle, Triangulate, Vertices, MapToVertices, Neighbors};
 use mint::Vector3 as MintVector3;
 use cgmath::prelude::*;
-use cgmath::{Matrix4, Point3, Rad, Vector3};
+use cgmath::{Matrix4, Point3, Point2, Rad, Vector3};
 use rand;
 use rand_distr::{Distribution, UnitSphere};
 
@@ -419,8 +419,12 @@ pub fn execute(sub_division: i32, mesh_size: i32, x: f32, z:f32) -> MyMesh {
       .collect();
   let transform = <Matrix4<f32> as One>::one();
 
+  let tex = (0..vertex.len()).map(|i|Point2::new(-1.0, -1.0))
+      .collect();
+
   let mut res = MyMesh::new(
     vertex,
+    tex,
     normals,
     index,
     transform,

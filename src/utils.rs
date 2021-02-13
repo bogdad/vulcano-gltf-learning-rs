@@ -4,7 +4,7 @@ pub struct Vertex {
   pub tex: (f32, f32),
 }
 
-vulkano::impl_vertex!(Vertex, position);
+vulkano::impl_vertex!(Vertex, position, tex);
 
 #[derive(Default, Copy, Clone, Debug)]
 pub struct Normal {

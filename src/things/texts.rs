@@ -45,8 +45,8 @@ impl Image {
   }
 }
 
-struct ImageInfo {
-  rect: (u32, u32),
+pub struct ImageInfo {
+  pub rect: (u32, u32),
 }
 
 pub struct Texts {
@@ -82,5 +82,9 @@ impl Texts {
 
   pub fn texture(&self) -> RgbImage {
     self.image.clone()
+  }
+
+  pub fn info(&self, text: &String) -> &ImageInfo {
+    self.infos.get(text).unwrap()
   }
 }

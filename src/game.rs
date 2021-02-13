@@ -1,7 +1,7 @@
 use vulkano::buffer::cpu_pool::CpuBufferPool;
 use vulkano::buffer::BufferUsage;
 use vulkano::command_buffer::{AutoCommandBufferBuilder, SubpassContents};
-use vulkano::descriptor::descriptor_set::{PersistentDescriptorSet, PersistentDescriptorSetBuf};
+use vulkano::descriptor::descriptor_set::{DescriptorSet, PersistentDescriptorSet};
 use vulkano::image::ImmutableImage;
 use vulkano::format::Format;
 use vulkano::sampler::{Filter, MipmapMode, Sampler, SamplerAddressMode};
@@ -15,6 +15,7 @@ use winit::event_loop::ControlFlow;
 use cgmath::{Point3, Vector3};
 
 use std::sync::Arc;
+use std::boxed::Box;
 
 use crate::vs;
 use crate::executor::Executor;
@@ -38,8 +39,6 @@ pub struct Game {
   previous_frame_end: Option<Box<dyn GpuFuture>>,
   texts: Texts,
   textures: Textures,
-  sampler: Option<Arc<Sampler>>,
-  texture: Option<Arc<ImmutableImage<Format>>>
 }
 
 impl Game {
@@ -58,8 +57,11 @@ impl Game {
       speed: 0.3,
     };
 
+    let strs = (-100..100).map(|i| i.to_string()).collect();
+    let texts = Texts::build(strs);
+
     let sign_posts = vec![
-      SignPost::new(&graph.device, Point3::new(-10.0, 0.0, 0.0), "100".to_string())
+      SignPost::new(&graph.device, Point3::new(-10.0, 5.0, 0.0), "10".to_string(), &texts)
     ];
 
     let world = World::new(executor.clone(), &graph, sign_posts);
@@ -82,9 +84,6 @@ impl Game {
     let uniform_buffer =
       CpuBufferPool::<vs::ty::Data>::new(graph.device.clone(), BufferUsage::all());
 
-    let strs = (-100..100).map(|i| i.to_string()).collect();
-    let texts = Texts::build(strs);
-
     let textures = Textures::new(&texts);
 
     let previous_frame_end = Some(sync::now(graph.device.clone()).boxed());
@@ -100,12 +99,26 @@ impl Game {
       previous_frame_end,
       texts,
       textures,
-      sampler: None,
-      texture: None,
     }
   }
 
   pub fn init(&mut self) {
+
+  }
+
+  fn draw(&mut self) {
+    self.previous_frame_end.as_mut().unwrap().cleanup_finished();
+    if self.recreate_swapchain {
+      self.graph.recreate_swapchain();
+      self.recreate_swapchain = false;
+    }
+    let uniform_buffer_subbuffer = {
+
+      let uniform_data = self.camera.proj(&self.graph);
+      self.uniform_buffer.next(uniform_data).unwrap()
+    };
+    let layout = self.graph.pipeline.descriptor_set_layout(0).unwrap();
+
     let (texture, future) = self.textures.draw(&self.graph.queue);
     self.previous_frame_end = Some(future);
 
@@ -123,31 +136,15 @@ impl Game {
         0.0,
     )
     .unwrap();
-    self.sampler = Some(sampler);
-    self.texture = Some(texture);
-  }
 
-  fn draw(&mut self) {
-    self.previous_frame_end.as_mut().unwrap().cleanup_finished();
-    if self.recreate_swapchain {
-      self.graph.recreate_swapchain();
-      self.recreate_swapchain = false;
-    }
-    let uniform_buffer_subbuffer = {
-
-      let uniform_data = self.camera.proj(&self.graph);
-      self.uniform_buffer.next(uniform_data).unwrap()
-    };
-    let layout = self.graph.pipeline.descriptor_set_layout(0).unwrap();
     let set = Arc::new(
       PersistentDescriptorSet::start(layout.clone())
         .add_buffer(uniform_buffer_subbuffer)
         .unwrap()
-        .add_sampled_image(self.texture.as_ref().unwrap().clone(), self.sampler.as_ref().unwrap().clone())
+        .add_sampled_image(texture.clone(), sampler.clone())
         .unwrap()
         .build()
-        .unwrap(),
-    );
+        .unwrap());
 
     let (image_num, suboptimal, acquire_future) =
       match swapchain::acquire_next_image(self.graph.swapchain.clone(), None) {
@@ -176,7 +173,7 @@ impl Game {
       )
       .unwrap();
     for model in &self.models {
-      model.draw_indexed(&mut builder, self.graph.pipeline.clone(), set.clone())
+      model.draw_indexed(&mut builder, self.graph.pipeline.clone(), set.clone());
     }
     for model in self.world.get_models() {
       model.draw_indexed(&mut builder, self.graph.pipeline.clone(), set.clone());
