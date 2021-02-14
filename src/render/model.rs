@@ -8,8 +8,8 @@ use vulkano::pipeline::GraphicsPipelineAbstract;
 use std::path::Path;
 use std::sync::Arc;
 
-use crate::utils::{Normal, Vertex};
 use crate::render::mymesh::MyMesh;
+use crate::utils::{Normal, Vertex};
 
 #[derive(Clone, Debug)]
 pub struct Model {

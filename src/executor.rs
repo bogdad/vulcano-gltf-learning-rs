@@ -1,5 +1,4 @@
-
-use futures::executor::{ThreadPool, block_on};
+use futures::executor::{block_on, ThreadPool};
 use futures::future::{Future, RemoteHandle, Shared};
 use futures::task::SpawnExt;
 
@@ -9,21 +8,21 @@ pub struct Executor {
 }
 
 impl Executor {
-
   pub fn new(thread_pool: ThreadPool) -> Self {
-    Executor {
-      thread_pool,
-    }
+    Executor { thread_pool }
   }
 
   pub fn do_background<Fut>(&self, future: Fut) -> RemoteHandle<()>
-   where
-    Fut: Future<Output = ()> + Send + 'static, {
+  where
+    Fut: Future<Output = ()> + Send + 'static,
+  {
     self.thread_pool.spawn_with_handle(future).unwrap()
   }
 
   pub fn wait<T>(&self, handle: Shared<RemoteHandle<T>>) -> T
-  where T: 'static + Clone,  {
+  where
+    T: 'static + Clone,
+  {
     block_on(handle)
   }
 }

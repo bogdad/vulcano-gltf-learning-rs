@@ -1,10 +1,9 @@
-use cgmath::{Vector3, Point3, Matrix4, Matrix3, EuclideanSpace, Rad, InnerSpace};
 use crate::world::Mode;
+use cgmath::{EuclideanSpace, InnerSpace, Matrix3, Matrix4, Point3, Rad, Vector3};
 
 use winit::event::{KeyboardInput, VirtualKeyCode};
 
 use std::fmt;
-
 
 use crate::vs;
 use crate::Graph;
@@ -20,7 +19,6 @@ pub struct Camera {
   pub speed: f32,
 }
 impl Camera {
-
   fn adjust(&mut self, mode: Mode, by: Vector3<f32>) {
     match mode {
       Mode::MoveCameraPos => self.pos += by,
@@ -71,8 +69,7 @@ impl Camera {
     // note: this teapot was meant for OpenGL where the origin is at the lower left
     //       instead the origin is at the upper left in, Vulkan, so we reverse the Y axis
     let aspect_ratio = graph.dimensions[0] as f32 / graph.dimensions[1] as f32;
-    let mut proj =
-      cgmath::perspective(Rad(std::f32::consts::FRAC_PI_2), aspect_ratio, 0.1, 100.0);
+    let mut proj = cgmath::perspective(Rad(std::f32::consts::FRAC_PI_2), aspect_ratio, 0.1, 100.0);
 
     // flipping the "horizontal" projection bit
     proj[0][0] = -proj[0][0];
@@ -99,10 +96,19 @@ impl Camera {
 
 impl fmt::Display for Camera {
   fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "pos: ({}, {}, {}) front: ({}, {}, {}), up: ({}, {}, {}) speed: {}",
-          self.pos.x, self.pos.y, self.pos.z,
-          self.front.x, self.front.y, self.front.z,
-          self.up.x, self.up.y, self.up.z,
-          self.speed)
+    write!(
+      f,
+      "pos: ({}, {}, {}) front: ({}, {}, {}), up: ({}, {}, {}) speed: {}",
+      self.pos.x,
+      self.pos.y,
+      self.pos.z,
+      self.front.x,
+      self.front.y,
+      self.front.z,
+      self.up.x,
+      self.up.y,
+      self.up.z,
+      self.speed
+    )
   }
 }

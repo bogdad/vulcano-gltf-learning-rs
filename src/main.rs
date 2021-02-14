@@ -1,5 +1,3 @@
-
-
 use vulkano::device::{Device, DeviceExtensions, Queue};
 use vulkano::format::Format;
 use vulkano::framebuffer::{Framebuffer, FramebufferAbstract, RenderPassAbstract, Subpass};
@@ -14,34 +12,33 @@ use vulkano::swapchain::{
   SwapchainCreationError,
 };
 
-use vulkano_win::VkSurfaceBuild;
 use vulkano_text::DrawText;
+use vulkano_win::VkSurfaceBuild;
 
 use winit::event_loop::EventLoop;
 use winit::window::{Window, WindowBuilder};
 
-
 extern crate futures;
-extern crate vulkano_text;
-extern crate mint;
 extern crate itertools;
+extern crate mint;
+extern crate vulkano_text;
 
 use futures::executor::ThreadPoolBuilder;
 
 use std::iter;
 use std::sync::Arc;
 
-mod game;
-mod camera;
-mod sky;
-mod sign_post;
 mod actor;
+mod camera;
+mod game;
+mod sign_post;
+mod sky;
 mod world;
 
+mod executor;
 mod render;
 mod things;
 mod utils;
-mod executor;
 
 use executor::Executor;
 use game::Game;
@@ -232,7 +229,6 @@ impl Graph {
 
     let draw_text = DrawText::new(device.clone(), queue.clone(), swapchain.clone(), &images);
 
-
     Graph {
       surface,
       dimensions,
@@ -266,14 +262,18 @@ impl Graph {
     self.pipeline = new_pipeline;
     self.framebuffers = new_framebuffers;
 
-    self.draw_text = DrawText::new(self.device.clone(), self.queue.clone(), self.swapchain.clone(), &new_images);
+    self.draw_text = DrawText::new(
+      self.device.clone(),
+      self.queue.clone(),
+      self.swapchain.clone(),
+      &new_images,
+    );
   }
 }
 
 fn main() {
   let mut thread_pool_builder = ThreadPoolBuilder::new();
-  thread_pool_builder.name_prefix("background")
-                     .pool_size(2);
+  thread_pool_builder.name_prefix("background").pool_size(2);
   let thread_pool = thread_pool_builder.create().unwrap();
 
   let event_loop = EventLoop::new();

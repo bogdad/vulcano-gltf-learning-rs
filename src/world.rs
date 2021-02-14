@@ -1,15 +1,13 @@
-
-use winit::event::{VirtualKeyCode, KeyboardInput};
 use cgmath::Point3;
-
+use winit::event::{KeyboardInput, VirtualKeyCode};
 
 use std::fmt;
 
-use crate::sky::Sky;
-use crate::render::model::Model;
-use crate::Graph;
 use crate::executor::Executor;
+use crate::render::model::Model;
 use crate::sign_post::SignPost;
+use crate::sky::Sky;
+use crate::Graph;
 
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub enum Mode {
@@ -19,16 +17,20 @@ pub enum Mode {
 }
 
 impl Mode {
-  const VALUES: [Self; 3] = [Self::MoveCameraPos, Self::MoveCameraFront, Self::MoveCameraUp];
+  const VALUES: [Self; 3] = [
+    Self::MoveCameraPos,
+    Self::MoveCameraFront,
+    Self::MoveCameraUp,
+  ];
   fn next(&self) -> Mode {
     let mut prev = Self::MoveCameraUp;
     for mode in Mode::VALUES.iter().copied() {
-        if prev == *self {
-          return mode;
-        }
-        prev = mode;
+      if prev == *self {
+        return mode;
+      }
+      prev = mode;
     }
-    return prev
+    return prev;
   }
 }
 
@@ -39,7 +41,6 @@ pub struct World {
   sign_posts: Vec<SignPost>,
 }
 impl World {
-
   pub fn new(executor: Executor, graph: &Graph, sign_posts: Vec<SignPost>) -> Self {
     let sky = Sky::new(&graph.device, 0.0, 0.0);
     World {
@@ -70,7 +71,8 @@ impl World {
     if let KeyboardInput {
       virtual_keycode: Some(key_code),
       ..
-    } = input {
+    } = input
+    {
       match key_code {
         VirtualKeyCode::Escape => self.command(),
         _ => (),
@@ -86,8 +88,6 @@ impl World {
     }
     res
   }
-
-
 }
 
 impl fmt::Display for World {

@@ -1,32 +1,32 @@
+use cgmath::{Point3, Vector3};
 use vulkano::buffer::cpu_pool::CpuBufferPool;
 use vulkano::buffer::BufferUsage;
 use vulkano::command_buffer::{AutoCommandBufferBuilder, SubpassContents};
-use vulkano::descriptor::descriptor_set::{PersistentDescriptorSet};
-use vulkano::image::ImmutableImage;
+use vulkano::descriptor::descriptor_set::PersistentDescriptorSet;
 use vulkano::format::Format;
+use vulkano::image::ImmutableImage;
 use vulkano::sampler::{Filter, MipmapMode, Sampler, SamplerAddressMode};
 use vulkano::swapchain;
 use vulkano::swapchain::AcquireError;
 use vulkano::sync;
 use vulkano::sync::{FlushError, GpuFuture};
-use vulkano_text::{DrawTextTrait};
+use vulkano_text::DrawTextTrait;
 use winit::event::{Event, WindowEvent};
 use winit::event_loop::ControlFlow;
-use cgmath::{Point3, Vector3};
 
-use std::sync::Arc;
 use std::boxed::Box;
+use std::sync::Arc;
 
-use crate::vs;
-use crate::executor::Executor;
-use crate::Graph;
-use crate::Model;
 use crate::camera::Camera;
-use crate::world::World;
-use crate::things::primitives::{PrimitiveCube, PrimitiveTriangle};
-use crate::things::texts::Texts;
+use crate::executor::Executor;
 use crate::render::textures::Textures;
 use crate::sign_post::SignPost;
+use crate::things::primitives::{PrimitiveCube, PrimitiveTriangle};
+use crate::things::texts::Texts;
+use crate::vs;
+use crate::world::World;
+use crate::Graph;
+use crate::Model;
 
 pub struct Game {
   executor: Executor,
@@ -64,28 +64,35 @@ impl Game {
 
     let mut sign_posts = vec![];
     for i in -100..100 {
-      sign_posts.push(
-        SignPost::new(&graph.device, Point3::new(i as f32, -2.0, 0.0), i.to_string(), &texts)
-      );
+      sign_posts.push(SignPost::new(
+        &graph.device,
+        Point3::new(i as f32, -2.0, 0.0),
+        i.to_string(),
+        &texts,
+      ));
     }
 
     for i in -100..100 {
-      sign_posts.push(
-        SignPost::new(&graph.device, Point3::new(-2.0, i as f32, 0.0), i.to_string(), &texts)
-      );
+      sign_posts.push(SignPost::new(
+        &graph.device,
+        Point3::new(-2.0, i as f32, 0.0),
+        i.to_string(),
+        &texts,
+      ));
     }
 
     for i in -100..100 {
-      sign_posts.push(
-        SignPost::new(&graph.device, Point3::new(-2.0, -2.0, i as f32), i.to_string(), &texts)
-      );
+      sign_posts.push(SignPost::new(
+        &graph.device,
+        Point3::new(-2.0, -2.0, i as f32),
+        i.to_string(),
+        &texts,
+      ));
     }
-
 
     let world = World::new(executor.clone(), &graph, sign_posts);
 
     let recreate_swapchain = false;
-
 
     let models = vec![
       //Model::from_gltf(Path::new("models/creature.glb"), &device),
@@ -95,8 +102,12 @@ impl Game {
       //Model::from_gltf(Path::new("models/dog.glb"), &graph.device),
       //Model::from_gltf(Path::new("models/box.glb"), &device),
       //Model::from_gltf(Path::new("models/center.glb"), &device),
-      PrimitiveCube::new(2.0, 4.0, 8.0, (-8.0, 0.0, 0.0)).mesh.get_buffers(&graph.device),
-      PrimitiveTriangle::new(Point3::new(10.0, 0.0, 0.0)).mesh.get_buffers(&graph.device),
+      PrimitiveCube::new(2.0, 4.0, 8.0, (-8.0, 0.0, 0.0))
+        .mesh
+        .get_buffers(&graph.device),
+      PrimitiveTriangle::new(Point3::new(10.0, 0.0, 0.0))
+        .mesh
+        .get_buffers(&graph.device),
     ];
 
     let uniform_buffer =
@@ -127,17 +138,17 @@ impl Game {
     self.previous_frame_end = Some(future);
 
     let sampler = Sampler::new(
-        self.graph.device.clone(),
-        Filter::Linear,
-        Filter::Linear,
-        MipmapMode::Nearest,
-        SamplerAddressMode::ClampToEdge,
-        SamplerAddressMode::ClampToEdge,
-        SamplerAddressMode::ClampToEdge,
-        0.0,
-        1.0,
-        0.0,
-        1.0,
+      self.graph.device.clone(),
+      Filter::Linear,
+      Filter::Linear,
+      MipmapMode::Nearest,
+      SamplerAddressMode::ClampToEdge,
+      SamplerAddressMode::ClampToEdge,
+      SamplerAddressMode::ClampToEdge,
+      0.0,
+      1.0,
+      0.0,
+      1.0,
     )
     .unwrap();
     self.texture = Some(texture);
@@ -151,7 +162,6 @@ impl Game {
       self.recreate_swapchain = false;
     }
     let uniform_buffer_subbuffer = {
-
       let uniform_data = self.camera.proj(&self.graph);
       self.uniform_buffer.next(uniform_data).unwrap()
     };
@@ -163,10 +173,12 @@ impl Game {
         .unwrap()
         .add_sampled_image(
           self.texture.as_ref().unwrap().clone(),
-          self.sampler.as_ref().unwrap().clone())
+          self.sampler.as_ref().unwrap().clone(),
+        )
         .unwrap()
         .build()
-        .unwrap());
+        .unwrap(),
+    );
 
     let (image_num, suboptimal, acquire_future) =
       match swapchain::acquire_next_image(self.graph.swapchain.clone(), None) {
@@ -201,13 +213,15 @@ impl Game {
       model.draw_indexed(&mut builder, self.graph.pipeline.clone(), set.clone());
     }
 
-
     let mut y = 50.0;
     let status = self.status_string();
-    for line in status .split("\n") {
-      self.graph.draw_text.queue_text(200.0, y, 40.0, [1.0, 1.0, 1.0, 1.0], line);
+    for line in status.split("\n") {
+      self
+        .graph
+        .draw_text
+        .queue_text(200.0, y, 40.0, [1.0, 1.0, 1.0, 1.0], line);
       y += 40.0;
-    };
+    }
 
     builder.end_render_pass().unwrap();
     builder.draw_text(&mut self.graph.draw_text, image_num);

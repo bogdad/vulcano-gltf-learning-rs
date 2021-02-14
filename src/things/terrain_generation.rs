@@ -1,15 +1,15 @@
 // translation of https://github.com/sftd/blender-addons/blob/master/add_mesh_ant_landscape.py
 // into rust
 
-use genmesh::{Polygon, Quad, Triangle, Triangulate, Vertices, MapToVertices, Neighbors};
-use mint::Vector3 as MintVector3;
 use cgmath::prelude::*;
-use cgmath::{Matrix4, Point3, Point2, Rad, Vector3};
+use cgmath::{Matrix4, Point2, Point3, Rad, Vector3};
+use genmesh::{MapToVertices, Neighbors, Polygon, Quad, Triangle, Triangulate, Vertices};
+use mint::Vector3 as MintVector3;
 use rand;
 use rand_distr::{Distribution, UnitSphere};
 
-use crate::things::hetero_terrain::hetero_terrain_new_perlin;
 use crate::render::mymesh::MyMesh;
+use crate::things::hetero_terrain::hetero_terrain_new_perlin;
 use crate::utils::{Face, Vertex};
 
 fn landscape_gen(
@@ -390,52 +390,43 @@ fn grid_gen(sub_division: i32, mesh_size: i32) -> (Vec<Vertex>, Vec<Face>) {
   (verts, faces)
 }
 
-pub fn execute(sub_division: i32, mesh_size: i32, x: f32, z:f32) -> MyMesh {
+pub fn execute(sub_division: i32, mesh_size: i32, x: f32, z: f32) -> MyMesh {
   let (verts, faces) = grid_gen(sub_division, mesh_size);
   let vertex: Vec<Point3<f32>> = verts
     .iter()
     .map(|v| Point3::new(v.position.0, v.position.1, v.position.2))
     .collect();
 
-  let triangles: Vec<Triangle<usize>> =
-    faces
-      .iter()
-      .cloned()
-      .triangulate()
-      .vertex(|v| v as usize)
-      .collect();
+  let triangles: Vec<Triangle<usize>> = faces
+    .iter()
+    .cloned()
+    .triangulate()
+    .vertex(|v| v as usize)
+    .collect();
 
   let neighbours = Neighbors::new(vertex.clone(), triangles.clone());
 
   let normals: Vec<Point3<f32>> = (0..vertex.len())
-      .map(|i| neighbours.normal_for_vertex(i, |v|{ MintVector3::<f32>::from([v.x, v.y, v.z]) }))
-      .map(|v| Point3::from((-v.x, -v.y, -v.z)))
-      .collect();
+    .map(|i| neighbours.normal_for_vertex(i, |v| MintVector3::<f32>::from([v.x, v.y, v.z])))
+    .map(|v| Point3::from((-v.x, -v.y, -v.z)))
+    .collect();
 
   let index: Vec<u32> = triangles
-      .iter()
-      .cloned()
-      .vertices()
-      .map(|v| v as u32)
-      .collect();
+    .iter()
+    .cloned()
+    .vertices()
+    .map(|v| v as u32)
+    .collect();
   let transform = <Matrix4<f32> as One>::one();
 
-  let tex = (0..vertex.len()).map(|i|Point2::new(-1.0, -1.0))
-      .collect();
-  let tex_offset = (0..vertex.len()).map(|i|Point2::new(0, 0))
-      .collect();
+  let tex = (0..vertex.len()).map(|i| Point2::new(-1.0, -1.0)).collect();
+  let tex_offset = (0..vertex.len()).map(|i| Point2::new(0, 0)).collect();
 
-  let mut res = MyMesh::new(
-    vertex,
-    tex,
-    tex_offset,
-    normals,
-    index,
-    transform,
-  );
+  let mut res = MyMesh::new(vertex, tex, tex_offset, normals, index, transform);
   res.update_transform_2(
     Vector3::new(x, 0.0, z),
     Matrix4::from_angle_x(Rad(std::f32::consts::FRAC_PI_2)),
-    [1.0, 1.0, 15.0]);
+    [1.0, 1.0, 15.0],
+  );
   res
 }

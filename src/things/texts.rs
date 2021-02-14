@@ -1,7 +1,7 @@
 extern crate ab_glyph;
 
-use ab_glyph::{FontRef, Font, Glyph, point};
-use image::{RgbImage, Rgb, GenericImage, ImageFormat};
+use ab_glyph::{point, Font, FontRef, Glyph};
+use image::{GenericImage, ImageFormat, Rgb, RgbImage};
 
 use std::collections::HashMap;
 
@@ -16,7 +16,9 @@ impl Image {
     let mut x = 0.0;
     let mut y = 0.0;
     for chr in text.chars() {
-      let glyph: Glyph = font.glyph_id(chr).with_scale_and_position(24.0, point(0.0, 0.0));
+      let glyph: Glyph = font
+        .glyph_id(chr)
+        .with_scale_and_position(24.0, point(0.0, 0.0));
       let q = font.outline_glyph(glyph).unwrap();
       //println!("yyyyyyyyyy {:?}", q.px_bounds());
       x += q.px_bounds().max.x - q.px_bounds().min.x;
@@ -30,7 +32,9 @@ impl Image {
     let mut image = RgbImage::new(w, h);
     x = 0.0;
     for chr in text.chars() {
-      let glyph: Glyph = font.glyph_id(chr).with_scale_and_position(24.0, point(0.0, 0.0));
+      let glyph: Glyph = font
+        .glyph_id(chr)
+        .with_scale_and_position(24.0, point(0.0, 0.0));
       let q = font.outline_glyph(glyph).unwrap();
       q.draw(|xx, yy, c| {
         //println!("zzzzzzzzzz {:?}", (xx, yy, c));
@@ -39,9 +43,7 @@ impl Image {
       x += q.px_bounds().max.x - q.px_bounds().min.x;
     }
 
-    Image {
-      image
-    }
+    Image { image }
   }
 }
 
@@ -67,23 +69,25 @@ impl Texts {
       width = width.max(image.0.image.width());
       height += image.0.image.height();
     }
-    let mut image = RgbImage::new(2*width, 2*height);
+    let mut image = RgbImage::new(2 * width, 2 * height);
     let mut infos = HashMap::new();
     let mut y = 0;
     for img in &images {
       let y_to_put = img.0.image.height();
       image.copy_from(&img.0.image, 0, y + y_to_put).unwrap();
-      infos.insert(img.1.clone(), ImageInfo{
-        min: (0, y),
-        max: (width * 2, y + 2*img.0.image.height())
-      });
-      y += 2*img.0.image.height();
+      infos.insert(
+        img.1.clone(),
+        ImageInfo {
+          min: (0, y),
+          max: (width * 2, y + 2 * img.0.image.height()),
+        },
+      );
+      y += 2 * img.0.image.height();
     }
-    image.save_with_format("./all.png", ImageFormat::Png).unwrap();
-    Texts {
-      infos,
-      image,
-    }
+    image
+      .save_with_format("./all.png", ImageFormat::Png)
+      .unwrap();
+    Texts { infos, image }
   }
 
   pub fn texture(&self) -> RgbImage {
