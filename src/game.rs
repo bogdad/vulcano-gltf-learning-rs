@@ -69,6 +69,17 @@ impl Game {
       );
     }
 
+    for i in -100..100 {
+      sign_posts.push(
+        SignPost::new(&graph.device, Point3::new(-2.0, i as f32, 0.0), i.to_string(), &texts)
+      );
+    }
+
+    for i in -100..100 {
+      sign_posts.push(
+        SignPost::new(&graph.device, Point3::new(-2.0, -2.0, i as f32), i.to_string(), &texts)
+      );
+    }
 
 
     let world = World::new(executor.clone(), &graph, sign_posts);
