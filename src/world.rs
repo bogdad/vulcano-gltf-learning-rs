@@ -30,7 +30,7 @@ impl Mode {
       }
       prev = mode;
     }
-    return prev;
+    prev
   }
 }
 

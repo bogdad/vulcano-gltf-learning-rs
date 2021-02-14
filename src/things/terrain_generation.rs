@@ -5,7 +5,6 @@ use cgmath::prelude::*;
 use cgmath::{Matrix4, Point2, Point3, Rad, Vector3};
 use genmesh::{MapToVertices, Neighbors, Polygon, Quad, Triangle, Triangulate, Vertices};
 use mint::Vector3 as MintVector3;
-use rand;
 use rand_distr::{Distribution, UnitSphere};
 
 use crate::render::mymesh::MyMesh;
@@ -174,7 +173,7 @@ fn landscape_gen(
   value
 }
 
-fn create_faces(out_faces: &mut Vec<Face>, vert_idx_1: &Vec<u32>, vert_idx_2: &Vec<u32>) {
+fn create_faces(out_faces: &mut Vec<Face>, vert_idx_1: &[u32], vert_idx_2: &[u32]) {
   /*
   # A very simple "bridge" tool.
   # Connects two equally long vertex rows with faces.
@@ -244,7 +243,7 @@ fn create_faces(out_faces: &mut Vec<Face>, vert_idx_1: &Vec<u32>, vert_idx_2: &V
 
       return faces
   */
-  if vert_idx_1.len() == 0 || vert_idx_2.len() == 0 {
+  if vert_idx_1.is_empty() || vert_idx_2.is_empty() {
     panic!(
       "lengths should be positive but they are {:?} {:?}",
       vert_idx_1.len(),
@@ -382,7 +381,7 @@ fn grid_gen(sub_division: i32, mesh_size: i32) -> (Vec<Vertex>, Vec<Face>) {
         tex_offset: (0, 0),
       });
     }
-    if edgeloop_prev.len() > 0 {
+    if !edgeloop_prev.is_empty() {
       create_faces(&mut faces, &edgeloop_prev, &edgeloop_cur);
     }
     edgeloop_prev = edgeloop_cur;
@@ -419,8 +418,8 @@ pub fn execute(sub_division: i32, mesh_size: i32, x: f32, z: f32) -> MyMesh {
     .collect();
   let transform = <Matrix4<f32> as One>::one();
 
-  let tex = (0..vertex.len()).map(|i| Point2::new(-1.0, -1.0)).collect();
-  let tex_offset = (0..vertex.len()).map(|i| Point2::new(0, 0)).collect();
+  let tex = (0..vertex.len()).map(|_i| Point2::new(-1.0, -1.0)).collect();
+  let tex_offset = (0..vertex.len()).map(|_i| Point2::new(0, 0)).collect();
 
   let mut res = MyMesh::new(vertex, tex, tex_offset, normals, index, transform);
   res.update_transform_2(

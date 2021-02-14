@@ -12,18 +12,18 @@ struct Image {
 impl Image {
   pub fn from_text(text: &str) -> Self {
     let font = FontRef::try_from_slice(include_bytes!("../../fonts/kleymissky.otf")).unwrap();
-    // Get a glyph for 'q' with a scale & position.
+
     let mut x = 0.0;
     let mut y = 0.0;
     for chr in text.chars() {
       let glyph: Glyph = font
         .glyph_id(chr)
         .with_scale_and_position(24.0, point(0.0, 0.0));
-      let q = font.outline_glyph(glyph).unwrap();
+      let outline_glyph = font.outline_glyph(glyph).unwrap();
       //println!("yyyyyyyyyy {:?}", q.px_bounds());
-      x += q.px_bounds().max.x - q.px_bounds().min.x;
-      if y <= q.px_bounds().max.y - q.px_bounds().min.y {
-        y = q.px_bounds().max.y - q.px_bounds().min.y;
+      x += outline_glyph.px_bounds().max.x - outline_glyph.px_bounds().min.x;
+      if y <= outline_glyph.px_bounds().max.y - outline_glyph.px_bounds().min.y {
+        y = outline_glyph.px_bounds().max.y - outline_glyph.px_bounds().min.y;
       }
     }
     let w = x as u32;
@@ -35,12 +35,12 @@ impl Image {
       let glyph: Glyph = font
         .glyph_id(chr)
         .with_scale_and_position(24.0, point(0.0, 0.0));
-      let q = font.outline_glyph(glyph).unwrap();
-      q.draw(|xx, yy, c| {
+      let outline_glyph = font.outline_glyph(glyph).unwrap();
+      outline_glyph.draw(|xx, yy, c| {
         //println!("zzzzzzzzzz {:?}", (xx, yy, c));
         image.put_pixel(x as u32 + xx, yy, Rgb([(255.0 * c) as u8, 0, 0]))
       });
-      x += q.px_bounds().max.x - q.px_bounds().min.x;
+      x += outline_glyph.px_bounds().max.x - outline_glyph.px_bounds().min.x;
     }
 
     Image { image }
@@ -94,7 +94,7 @@ impl Texts {
     self.image.clone()
   }
 
-  pub fn info(&self, text: &String) -> &ImageInfo {
+  pub fn info(&self, text: &str) -> &ImageInfo {
     self.infos.get(text).unwrap()
   }
 

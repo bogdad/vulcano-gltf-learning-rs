@@ -1,7 +1,7 @@
 // translation of https://github.com/blender/blender/blob/594f47ecd2d5367ca936cf6fc6ec8168c2b360d0/source/blender/blenlib/intern/noise.c#L1462
 // from c to rust
 
-const hash: [usize; 512] = [
+const HASH: [usize; 512] = [
   0xA2, 0xA0, 0x19, 0x3B, 0xF8, 0xEB, 0xAA, 0xEE, 0xF3, 0x1C, 0x67, 0x28, 0x1D, 0xED, 0x0, 0xDE,
   0x95, 0x2E, 0xDC, 0x3F, 0x3A, 0x82, 0x35, 0x4D, 0x6C, 0xBA, 0x36, 0xD0, 0xF6, 0xC, 0x79, 0x32,
   0xD1, 0x59, 0xF4, 0x8, 0x8B, 0x63, 0x89, 0x2F, 0xB8, 0xB4, 0x97, 0x83, 0xF2, 0x8F, 0x18, 0xC7,
@@ -41,16 +41,16 @@ fn lerp(t: f32, a: f32, b: f32) -> f32 {
 }
 
 fn grad(hash_val: usize, x: f32, y: f32, z: f32) -> f32 {
-  let h = hash_val & 15; /* CONVERT LO 4 BITS OF HASH CODE */
-  let u: f32 = if h < 8 { x } else { y }; /* INTO 12 GRADIENT DIRECTIONS. */
-  let v: f32 = if h < 4 {
+  let hh = hash_val & 15; /* CONVERT LO 4 BITS OF HASH CODE */
+  let uu: f32 = if hh < 8 { x } else { y }; /* INTO 12 GRADIENT DIRECTIONS. */
+  let vv: f32 = if hh < 4 {
     y
-  } else if h == 12 || h == 14 {
+  } else if hh == 12 || hh == 14 {
     x
   } else {
     z
   };
-  (if (h & 1) == 0 { u } else { -u }) + (if (h & 2) == 0 { v } else { -v })
+  (if (hh & 1) == 0 { uu } else { -uu }) + (if (hh & 2) == 0 { vv } else { -vv })
 }
 
 fn npfade(t: f32) -> f32 {
@@ -59,51 +59,51 @@ fn npfade(t: f32) -> f32 {
 
 /* instead of adding another permutation array, just use hash table defined above */
 fn new_perlin(xi: f32, yi: f32, zi: f32) -> f32 {
-  let (mut x, mut y, mut z) = (xi, yi, zi);
-  let mut u: f32 = x.floor();
-  let mut v: f32 = y.floor();
-  let mut w: f32 = z.floor();
-  let X = ((u as i32) & 255) as usize;
-  let Y = ((v as i32) & 255) as usize;
-  let Z = ((w as i32) & 255) as usize; /* FIND UNIT CUBE THAT CONTAINS POINT */
-  x -= u; /* FIND RELATIVE X,Y,Z */
-  y -= v; /* OF POINT IN CUBE. */
-  z -= w;
-  u = npfade(x); /* COMPUTE FADE CURVES */
-  v = npfade(y); /* FOR EACH OF X,Y,Z. */
-  w = npfade(z);
-  let a: usize = (hash[X] + Y) as usize;
-  let aa: usize = hash[a] + Z;
-  let ab: usize = hash[a + 1] + Z; /* HASH COORDINATES OF */
-  let b: usize = hash[X + 1] + Y;
-  let ba: usize = hash[b] + Z;
-  let bb: usize = hash[b + 1] + Z; /* THE 8 CUBE CORNERS, */
+  let (mut xrel, mut yrel, mut zrel) = (xi, yi, zi);
+  let mut uu: f32 = xrel.floor();
+  let mut vv: f32 = yrel.floor();
+  let mut ww: f32 = zrel.floor();
+  let xx = ((uu as i32) & 255) as usize;
+  let yy = ((vv as i32) & 255) as usize;
+  let zz = ((ww as i32) & 255) as usize; /* FIND UNIT CUBE THAT CONTAINS POINT */
+  xrel -= uu; /* FIND RELATIVE X,Y,Z */
+  yrel -= vv; /* OF POINT IN CUBE. */
+  zrel -= ww;
+  uu = npfade(xrel); /* COMPUTE FADE CURVES */
+  vv = npfade(yrel); /* FOR EACH OF X,Y,Z. */
+  ww = npfade(zrel);
+  let a: usize = (HASH[xx] + yy) as usize;
+  let aa: usize = HASH[a] + zz;
+  let ab: usize = HASH[a + 1] + zz; /* HASH COORDINATES OF */
+  let b: usize = HASH[xx + 1] + yy;
+  let ba: usize = HASH[b] + zz;
+  let bb: usize = HASH[b + 1] + zz; /* THE 8 CUBE CORNERS, */
   lerp(
-    w,
+    ww,
     lerp(
-      v,
+      vv,
       lerp(
-        u,
-        grad(hash[aa], x, y, z), /* AND ADD */
-        grad(hash[ba], x - 1.0, y, z),
+        uu,
+        grad(HASH[aa], xrel, yrel, zrel), /* AND ADD */
+        grad(HASH[ba], xrel - 1.0, yrel, zrel),
       ), /* BLENDED */
       lerp(
-        u,
-        grad(hash[ab], x, y - 1.0, z), /* RESULTS */
-        grad(hash[bb], x - 1.0, y - 1.0, z),
+        uu,
+        grad(HASH[ab], xrel, yrel - 1.0, zrel), /* RESULTS */
+        grad(HASH[bb], xrel - 1.0, yrel - 1.0, zrel),
       ),
     ), /* FROM  8 */
     lerp(
-      v,
+      vv,
       lerp(
-        u,
-        grad(hash[aa + 1], x, y, z - 1.0), /* CORNERS */
-        grad(hash[ba + 1], x - 1.0, y, z - 1.0),
+        uu,
+        grad(HASH[aa + 1], xrel, yrel, zrel - 1.0), /* CORNERS */
+        grad(HASH[ba + 1], xrel - 1.0, yrel, zrel - 1.0),
       ), /* OF CUBE */
       lerp(
-        u,
-        grad(hash[ab + 1], x, y - 1.0, z - 1.0),
-        grad(hash[bb + 1], x - 1.0, y - 1.0, z - 1.0),
+        uu,
+        grad(HASH[ab + 1], xrel, yrel - 1.0, zrel - 1.0),
+        grad(HASH[bb + 1], xrel - 1.0, yrel - 1.0, zrel - 1.0),
       ),
     ),
   )
@@ -117,24 +117,24 @@ pub fn hetero_terrain_new_perlin(
   xi: f32,
   yi: f32,
   zi: f32,
-  H: f32,
+  hh: f32,
   lacunarity: f32,
   octaves: f32,
   offset: f32,
-  noisebasis: i32,
+  _noisebasis: i32,
 ) -> f32 {
-  let pwHL = lacunarity.powf(-H);
+  let pw_hl = lacunarity.powf(-hh);
   let (mut x, mut y, mut z) = (xi, yi, zi);
 
-  let mut pwr = pwHL; /* starts with i=1 instead of 0 */
+  let mut pwr = pw_hl; /* starts with i=1 instead of 0 */
   let mut value = offset + noisefunc(x, y, z);
   x *= lacunarity;
   y *= lacunarity;
   z *= lacunarity;
-  for i in 1..(octaves as i32) {
+  for _i in 1..(octaves as i32) {
     let increment = (noisefunc(x, y, z) + offset) * pwr * value;
     value += increment;
-    pwr *= pwHL;
+    pwr *= pw_hl;
     x *= lacunarity;
     y *= lacunarity;
     z *= lacunarity;

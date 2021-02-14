@@ -215,7 +215,7 @@ impl Game {
 
     let mut y = 50.0;
     let status = self.status_string();
-    for line in status.split("\n") {
+    for line in status.split('\n') {
       self
         .graph
         .draw_text

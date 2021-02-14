@@ -184,7 +184,7 @@ impl Sky {
       if c0 != Ordering::Equal {
         return c0;
       }
-      return a.1.cmp(&b.1);
+      a.1.cmp(&b.1)
     });
     //println!("odered ordered {:?}", ordered);
     Sky {

@@ -57,7 +57,7 @@ impl Camera {
         }
       };
     }
-    return false;
+    false
   }
 
   pub fn proj(&self, graph: &Graph) -> vs::ty::Data {
@@ -83,14 +83,13 @@ impl Camera {
        v_normal = transpose(inverse(mat3(worldview))) * normal;
        gl_Position = uniforms.proj * worldview * vec4(position, 1.0);
     */
-    let uniform_data = vs::ty::Data {
+    vs::ty::Data {
       //world: Matrix4::from(eye).into(),
       world: Matrix4::from(rotation).into(),
       //world: <Matrix4<f32> as One>::one().into(),
       view: (view * scale).into(),
       proj: proj.into(),
-    };
-    uniform_data
+    }
   }
 }
 
