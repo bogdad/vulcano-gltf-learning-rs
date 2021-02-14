@@ -3,10 +3,23 @@
 
 ## Questions:
 
-- [ ] how do we write text on things in 3d
+- [x] how do we write text on things in 3d
 - [x] how do we generate random "cloud like landcapes" on the fly
 - [ ] how do vertex normals work
 - [x] how do coordinate systems work
+
+## how do we write text on things in 3d
+
+I created a very large texture with all possible texts, like this.
+![all texts](./images/6.png). 
+Then each number would be in a triangle, like this, ![triangle](./images/7.png).
+Thats why there is double space for each text.
+
+Then we properly count the texure coords - key here is that they are in the interval (0, 1).
+Then we need to discard non red texture pixels, and we get this:
+![red numbers across the scene](./images/5.png)
+
+Thats feels very naive, but works for our purposes.
 
 ## how do we generate random "cloud like landcapes" on the fly
 

@@ -1,9 +1,7 @@
 use genmesh::generators::{Cube, IndexedPolygon};
 use genmesh::{Triangulate, MapToVertices, Vertices, Neighbors, Triangle};
-use cgmath::{Matrix4, One, Point3, Point2, Vector3, Vector2, EuclideanSpace};
+use cgmath::{Matrix4, One, Point3, Point2, Vector3, EuclideanSpace};
 use mint::Vector3 as MintVector3;
-
-use std::sync::Arc;
 
 use crate::render::mymesh::MyMesh;
 
@@ -45,7 +43,11 @@ impl PrimitiveCube {
     let tex = (0..vertex.len()).map(|i|Point2::new(-1.0, -1.0))
       .collect();
 
-    let mut mesh = MyMesh::new(vertex, tex, normals, index, transform);
+
+    let tex_offset = (0..vertex.len()).map(|i|Point2::new(0, 0))
+      .collect();
+
+    let mut mesh = MyMesh::new(vertex, tex, tex_offset, normals, index, transform);
     mesh.update_transform_2(Vector3::from(xx), Matrix4::one(), [x, y, z]);
     println!("mesh {:?}", mesh);
     PrimitiveCube {
@@ -78,7 +80,9 @@ impl PrimitiveTriangle {
     let transform = Matrix4::one();
     let tex = (0..vertex.len()).map(|_i|Point2::new(-1.0, -1.0))
       .collect();
-    let mut mesh = MyMesh::new(vertex, tex, normals, index, transform);
+    let tex_offset = (0..vertex.len()).map(|_i|Point2::new(0, 0))
+      .collect();
+    let mut mesh = MyMesh::new(vertex, tex, tex_offset, normals, index, transform);
     mesh.update_transform_2(pos.to_vec(), Matrix4::one(), [10.0, 10.0, 10.0]);
     println!("mesh {:?}", mesh);
     PrimitiveTriangle {
@@ -86,19 +90,27 @@ impl PrimitiveTriangle {
     }
   }
 
-  pub fn newTex(pos: Point3<f32>, tex_pos: Point2<f32>) -> Self {
+  pub fn new_tex(pos: Point3<f32>, tex_pos_min: Point2<f32>, tex_pos_max: Point2<f32>, texture_size: (u32, u32)) -> Self {
 
     let vertex: Vec<Point3<f32>> = vec![
-      Point3::new(0.0, 0.0, 0.0),
-      Point3::new(0.0, -1.0, 0.0),
-      Point3::new(1.0, 0.0, 0.0),
+      pos + Vector3::new(0.0, 0.0, 0.0),
+      pos + Vector3::new(0.0, -1.0, 0.0),
+      pos + Vector3::new(1.0, 0.0, 0.0),
+    ];
+    //println!("new tex min {:?} max {:?}", tex_pos_min, tex_pos_max);
+    let tex = vec![
+      Point2::new(tex_pos_min.x / (texture_size.0 as f32), tex_pos_max.y / (texture_size.1 as f32)),
+      Point2::new(tex_pos_min.x / (texture_size.0 as f32), tex_pos_min.y / (texture_size.1 as f32)),
+      Point2::new(tex_pos_max.x / (texture_size.0 as f32), tex_pos_max.y / (texture_size.1 as f32)),
     ];
 
-    let tex = vec![
-      tex_pos + Vector2::new(0.0, 0.0),
-      tex_pos + Vector2::new(1.0, 0.0),
-      tex_pos + Vector2::new(0.0, 1.0),
+    let tex_offset = vec![
+      Point2::new(0, 0),
+      Point2::new(0, 0),
+      Point2::new(0, 0),
     ];
+
+    //println!("tex: {:?}", tex);
 
     let index: Vec<u32> = vec![0, 1, 2];
 
@@ -110,9 +122,10 @@ impl PrimitiveTriangle {
 
     let transform = Matrix4::one();
 
-    let mut mesh = MyMesh::new(vertex, tex, normals, index, transform);
-    mesh.update_transform_2(pos.to_vec(), Matrix4::one(), [10.0, 10.0, 10.0]);
+    let mesh = MyMesh::new(vertex, tex, tex_offset, normals, index, transform);
+    //mesh.update_transform_2(pos.to_vec(), Matrix4::one(), [10.0, 10.0, 10.0]);
     println!("mesh {:?}", mesh);
+    println!("tex: {:?}", mesh.tex);
     PrimitiveTriangle {
       mesh: mesh
     }

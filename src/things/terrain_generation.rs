@@ -379,6 +379,7 @@ fn grid_gen(sub_division: i32, mesh_size: i32) -> (Vec<Vertex>, Vec<Face>) {
       verts.push(Vertex {
         position: (x, y, z),
         tex: (-1.0, -1.0),
+        tex_offset: (0, 0),
       });
     }
     if edgeloop_prev.len() > 0 {
@@ -421,10 +422,13 @@ pub fn execute(sub_division: i32, mesh_size: i32, x: f32, z:f32) -> MyMesh {
 
   let tex = (0..vertex.len()).map(|i|Point2::new(-1.0, -1.0))
       .collect();
+  let tex_offset = (0..vertex.len()).map(|i|Point2::new(0, 0))
+      .collect();
 
   let mut res = MyMesh::new(
     vertex,
     tex,
+    tex_offset,
     normals,
     index,
     transform,

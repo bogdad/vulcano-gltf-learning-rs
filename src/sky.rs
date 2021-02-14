@@ -79,9 +79,7 @@ impl CacheCell {
     let fut = async move {
       println!("generated ({:?},{:?})", x, z);
       if let Some(device) = weak_device.upgrade() {
-        println!("device upgraded");
         if let Some(self_inner) = weak_self_inner.upgrade() {
-          println!("selv upgraded");
           let mut locked = self_inner.write().unwrap();
           if locked.model.is_some() {
             return;
@@ -113,7 +111,7 @@ impl CacheCell {
         return;
       }
     }
-    println!("blocking on sky");
+    //println!("blocking on sky");
     self.spawn_region(executor, device, x, z);
     self.block();
   }
@@ -180,7 +178,7 @@ impl Sky {
       }
       return a.1.cmp(&b.1);
     });
-    println!("odered ordered {:?}", ordered);
+    //println!("odered ordered {:?}", ordered);
     Sky {
       device: Arc::clone(device),
       cache,
@@ -214,8 +212,8 @@ impl Sky {
         self.prev_was_half = false;
     }
     if indices != (0, 0) {
-        println!("indices {:?} x {:?} z {:?} c {:?}",
-          indices, self.x, self.z, self.c);
+        //println!("indices {:?} x {:?} z {:?} c {:?}",
+        //  indices, self.x, self.z, self.c);
         // change the current
         // move each item in the grid in the right direction
         // negative index means we are moving existing items positively

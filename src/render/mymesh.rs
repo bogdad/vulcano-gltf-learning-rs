@@ -8,6 +8,8 @@ use gltf::scene::Node;
 use cgmath::Transform;
 use cgmath::{InnerSpace, Matrix4, Matrix3, Point3, Point2, SquareMatrix, Quaternion, Vector3};
 
+use itertools::izip;
+
 use std::path::Path;
 use std::sync::Arc;
 use std::ops::MulAssign;
@@ -19,6 +21,7 @@ use crate::render::model::Model;
 pub struct MyMesh {
   pub vertex: Vec<Point3<f32>>,
   pub tex: Vec<Point2<f32>>,
+  pub tex_offset: Vec<Point2<i32>>,
   pub normals: Vec<Point3<f32>>,
   pub index: Vec<u32>,
   pub transform: Matrix4<f32>,
@@ -28,6 +31,7 @@ impl MyMesh {
   pub fn new(
     vertex: Vec<cgmath::Point3<f32>>,
     tex: Vec<cgmath::Point2<f32>>,
+    tex_offset: Vec<cgmath::Point2<i32>>,
     normals: Vec<cgmath::Point3<f32>>,
     index: Vec<u32>,
     transform: Matrix4<f32>,
@@ -42,6 +46,7 @@ impl MyMesh {
     MyMesh {
       vertex,
       tex,
+      tex_offset,
       normals,
       index,
       transform,
@@ -71,6 +76,8 @@ impl MyMesh {
     };
     let tex = (0..vertex.len()).map(|i|Point2::new(-1.0, -1.0))
       .collect();
+    let tex_offset = (0..vertex.len()).map(|i|Point2::new(0, 0))
+      .collect();
     let normals = {
       let iter = reader.read_normals().unwrap_or_else(|| {
         panic!(
@@ -95,20 +102,21 @@ impl MyMesh {
     // let (translation, rotation, scale) = node.transform().decomposed();
     // println!("t {:?} r {:?} s {:?}", translation, rotation, scale);
 
-    MyMesh::new(vertex, tex, normals, index.unwrap(), transform)
+    MyMesh::new(vertex, tex, tex_offset, normals, index.unwrap(), transform)
   }
 
   pub fn get_buffers(&self, device: &Arc<Device>) -> Model {
-    let vertices_vec: Vec<Vertex> = self
-      .vertex
-      .iter()
-      .map(|pos| self.transform.transform_point(*pos))
-      .map(|pos| Vertex {
+    let vertices_vec: Vec<Vertex> =
+      izip!(self.vertex.iter(), self.tex.iter(), self.tex_offset.iter())
+      .map(|(pos, tex, tex_offset)| (self.transform.transform_point(*pos), tex, tex_offset))
+      .map(|(pos, tex, tex_offset)| Vertex {
         position: (pos[0], pos[1], pos[2]),
-        tex: (-1.0, -1.0),
+        tex: (tex.x, tex.y),
+        tex_offset: (tex_offset.x, tex_offset.y),
       })
       .collect();
     let vertices = vertices_vec.iter().cloned();
+    //println!("xxxxxxxxxxxxxxx vertices {:?}", vertices_vec);
     let normals_vec: Vec<Normal> = self
       .normals
       .iter()

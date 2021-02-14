@@ -1,7 +1,7 @@
 use vulkano::buffer::cpu_pool::CpuBufferPool;
 use vulkano::buffer::BufferUsage;
 use vulkano::command_buffer::{AutoCommandBufferBuilder, SubpassContents};
-use vulkano::descriptor::descriptor_set::{DescriptorSet, PersistentDescriptorSet};
+use vulkano::descriptor::descriptor_set::{PersistentDescriptorSet};
 use vulkano::image::ImmutableImage;
 use vulkano::format::Format;
 use vulkano::sampler::{Filter, MipmapMode, Sampler, SamplerAddressMode};
@@ -39,6 +39,8 @@ pub struct Game {
   previous_frame_end: Option<Box<dyn GpuFuture>>,
   texts: Texts,
   textures: Textures,
+  texture: Option<Arc<ImmutableImage<Format>>>,
+  sampler: Option<Arc<Sampler>>,
 }
 
 impl Game {
@@ -60,9 +62,14 @@ impl Game {
     let strs = (-100..100).map(|i| i.to_string()).collect();
     let texts = Texts::build(strs);
 
-    let sign_posts = vec![
-      SignPost::new(&graph.device, Point3::new(-10.0, 5.0, 0.0), "10".to_string(), &texts)
-    ];
+    let mut sign_posts = vec![];
+    for i in -100..100 {
+      sign_posts.push(
+        SignPost::new(&graph.device, Point3::new(i as f32, -2.0, 0.0), i.to_string(), &texts)
+      );
+    }
+
+
 
     let world = World::new(executor.clone(), &graph, sign_posts);
 
@@ -77,8 +84,8 @@ impl Game {
       //Model::from_gltf(Path::new("models/dog.glb"), &graph.device),
       //Model::from_gltf(Path::new("models/box.glb"), &device),
       //Model::from_gltf(Path::new("models/center.glb"), &device),
-      PrimitiveCube::new(2.0, 4.0, 8.0, (-4.0, 0.0, 0.0)).mesh.get_buffers(&graph.device),
-      PrimitiveTriangle::new(Point3::new(0.0, 0.0, 0.0)).mesh.get_buffers(&graph.device),
+      PrimitiveCube::new(2.0, 4.0, 8.0, (-8.0, 0.0, 0.0)).mesh.get_buffers(&graph.device),
+      PrimitiveTriangle::new(Point3::new(10.0, 0.0, 0.0)).mesh.get_buffers(&graph.device),
     ];
 
     let uniform_buffer =
@@ -99,11 +106,31 @@ impl Game {
       previous_frame_end,
       texts,
       textures,
+      texture: None,
+      sampler: None,
     }
   }
 
   pub fn init(&mut self) {
+    let (texture, future) = self.textures.draw(&self.graph.queue);
+    self.previous_frame_end = Some(future);
 
+    let sampler = Sampler::new(
+        self.graph.device.clone(),
+        Filter::Linear,
+        Filter::Linear,
+        MipmapMode::Nearest,
+        SamplerAddressMode::ClampToEdge,
+        SamplerAddressMode::ClampToEdge,
+        SamplerAddressMode::ClampToEdge,
+        0.0,
+        1.0,
+        0.0,
+        1.0,
+    )
+    .unwrap();
+    self.texture = Some(texture);
+    self.sampler = Some(sampler);
   }
 
   fn draw(&mut self) {
@@ -119,29 +146,13 @@ impl Game {
     };
     let layout = self.graph.pipeline.descriptor_set_layout(0).unwrap();
 
-    let (texture, future) = self.textures.draw(&self.graph.queue);
-    self.previous_frame_end = Some(future);
-
-    let sampler = Sampler::new(
-        self.graph.device.clone(),
-        Filter::Linear,
-        Filter::Linear,
-        MipmapMode::Nearest,
-        SamplerAddressMode::Repeat,
-        SamplerAddressMode::Repeat,
-        SamplerAddressMode::Repeat,
-        0.0,
-        1.0,
-        0.0,
-        0.0,
-    )
-    .unwrap();
-
     let set = Arc::new(
       PersistentDescriptorSet::start(layout.clone())
         .add_buffer(uniform_buffer_subbuffer)
         .unwrap()
-        .add_sampled_image(texture.clone(), sampler.clone())
+        .add_sampled_image(
+          self.texture.as_ref().unwrap().clone(),
+          self.sampler.as_ref().unwrap().clone())
         .unwrap()
         .build()
         .unwrap());

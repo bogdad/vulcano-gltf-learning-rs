@@ -1,4 +1,4 @@
-use vulkano::image::{Dimensions, ImmutableImage, MipmapsCount, SwapchainImage};
+use vulkano::image::{Dimensions, ImmutableImage, MipmapsCount};
 use vulkano::format::Format;
 use vulkano::device::Queue;
 use vulkano::sync::GpuFuture;
@@ -28,14 +28,19 @@ impl Textures {
             width: self.texture.dimensions().0,
             height: self.texture.dimensions().1,
         };
-
+        println!("texture dimensions {:?}", dimensions);
         ImmutableImage::from_iter(
-            self.texture.pixels().map(|p| (
-              p.to_rgba().channels4().0,
-              p.to_rgba().channels4().1,
-              p.to_rgba().channels4().2,
-              p.to_rgba().channels4().3,
-              )),
+            self.texture.pixels().map(|p| {
+              if p.to_rgba().channels()[0] < 50 {
+                (0, 0, 0, 255)
+              } else {
+                (
+                  p.to_rgba().channels4().0,
+                  p.to_rgba().channels4().1,
+                  p.to_rgba().channels4().2,
+                  p.to_rgba().channels4().3,
+                )
+              }}),
             dimensions,
             MipmapsCount::One,
             Format::R8G8B8A8Srgb,

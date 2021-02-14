@@ -1,7 +1,7 @@
 extern crate ab_glyph;
 
 use ab_glyph::{FontRef, Font, Glyph, point};
-use image::{RgbImage, Rgb, GenericImage};
+use image::{RgbImage, Rgb, GenericImage, ImageFormat};
 
 use std::collections::HashMap;
 
@@ -20,7 +20,7 @@ impl Image {
       let q = font.outline_glyph(glyph).unwrap();
       //println!("yyyyyyyyyy {:?}", q.px_bounds());
       x += q.px_bounds().max.x - q.px_bounds().min.x;
-      if y <= q.px_bounds().max.y {
+      if y <= q.px_bounds().max.y - q.px_bounds().min.y {
         y = q.px_bounds().max.y - q.px_bounds().min.y;
       }
     }
@@ -46,7 +46,8 @@ impl Image {
 }
 
 pub struct ImageInfo {
-  pub rect: (u32, u32),
+  pub min: (u32, u32),
+  pub max: (u32, u32),
 }
 
 pub struct Texts {
@@ -66,14 +67,19 @@ impl Texts {
       width = width.max(image.0.image.width());
       height += image.0.image.height();
     }
-    let mut image = RgbImage::new(width, height);
+    let mut image = RgbImage::new(2*width, 2*height);
     let mut infos = HashMap::new();
     let mut y = 0;
     for img in &images {
-      image.copy_from(&img.0.image, 0, y).unwrap();
-      infos.insert(img.1.clone(), ImageInfo{ rect: (0, y)});
-      y += img.0.image.height();
+      let y_to_put = img.0.image.height();
+      image.copy_from(&img.0.image, 0, y + y_to_put).unwrap();
+      infos.insert(img.1.clone(), ImageInfo{
+        min: (0, y),
+        max: (width * 2, y + 2*img.0.image.height())
+      });
+      y += 2*img.0.image.height();
     }
+    image.save_with_format("./all.png", ImageFormat::Png).unwrap();
     Texts {
       infos,
       image,
@@ -86,5 +92,9 @@ impl Texts {
 
   pub fn info(&self, text: &String) -> &ImageInfo {
     self.infos.get(text).unwrap()
+  }
+
+  pub fn size(&self) -> (u32, u32) {
+    (self.image.width(), self.image.height())
   }
 }
