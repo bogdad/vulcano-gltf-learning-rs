@@ -212,39 +212,39 @@ impl MyMesh {
 }
 
 /// Convert a rotation matrix to an equivalent quaternion.
-fn from_matrix(m: Matrix3<f32>) -> Quaternion<f32> {
-  let trace = m.trace();
+fn from_matrix(mat: Matrix3<f32>) -> Quaternion<f32> {
+  let trace = mat.trace();
   if trace >= 0.0 {
     let s = (1.0 + trace).sqrt();
     let w = 0.5 * s;
     let s = 0.5 / s;
-    let x = (m.y.z - m.z.y) * s;
-    let y = (m.z.x - m.x.z) * s;
-    let z = (m.x.y - m.y.x) * s;
+    let x = (mat.y.z - mat.z.y) * s;
+    let y = (mat.z.x - mat.x.z) * s;
+    let z = (mat.x.y - mat.y.x) * s;
     Quaternion::new(w, x, y, z)
-  } else if (m.x.x > m.y.y) && (m.x.x > m.z.z) {
-    let s = ((m.x.x - m.y.y - m.z.z) + 1.0).sqrt();
+  } else if (mat.x.x > mat.y.y) && (mat.x.x > mat.z.z) {
+    let s = ((mat.x.x - mat.y.y - mat.z.z) + 1.0).sqrt();
     let x = 0.5 * s;
     let s = 0.5 / s;
-    let y = (m.y.x + m.x.y) * s;
-    let z = (m.x.z + m.z.x) * s;
-    let w = (m.y.z - m.z.y) * s;
+    let y = (mat.y.x + mat.x.y) * s;
+    let z = (mat.x.z + mat.z.x) * s;
+    let w = (mat.y.z - mat.z.y) * s;
     Quaternion::new(w, x, y, z)
-  } else if m.y.y > m.z.z {
-    let s = ((m.y.y - m.x.x - m.z.z) + 1.0).sqrt();
+  } else if mat.y.y > mat.z.z {
+    let s = ((mat.y.y - mat.x.x - mat.z.z) + 1.0).sqrt();
     let y = 0.5 * s;
     let s = 0.5 / s;
-    let z = (m.z.y + m.y.z) * s;
-    let x = (m.y.x + m.x.y) * s;
-    let w = (m.z.x - m.x.z) * s;
+    let z = (mat.z.y + mat.y.z) * s;
+    let x = (mat.y.x + mat.x.y) * s;
+    let w = (mat.z.x - mat.x.z) * s;
     Quaternion::new(w, x, y, z)
   } else {
-    let s = ((m.z.z - m.x.x - m.y.y) + 1.0).sqrt();
+    let s = ((mat.z.z - mat.x.x - mat.y.y) + 1.0).sqrt();
     let z = 0.5 * s;
     let s = 0.5 / s;
-    let x = (m.x.z + m.z.x) * s;
-    let y = (m.z.y + m.y.z) * s;
-    let w = (m.x.y - m.y.x) * s;
+    let x = (mat.x.z + mat.z.x) * s;
+    let y = (mat.z.y + mat.y.z) * s;
+    let w = (mat.x.y - mat.y.x) * s;
     Quaternion::new(w, x, y, z)
   }
 }
