@@ -24,7 +24,7 @@ So the cool approach everybody are doing is - split the gpu computation into a 2
 - Light-indexed Deferred Rendering (first pass get indices of lights that are visible then do the geometry with indices)
 
 I however managed to only do the thing Amethyst does in its shaded shader - https://github.com/amethyst/amethyst/blob/main/amethyst_rendy/shaders/fragment/shaded.frag
-Not yet sure if albedo counting stuff is the "Deferred Lighting: combine all radiances from all lights", but the picture does look not like a sunrise to me. Totally can check the "how do we plop the light-source" box though.
+Not yet sure if albedo counting stuff is the "Deferred Lighting: combine all radiances from all lights", did not have time to figure it out, no albedo currently, and the picture does look not like a sunrise to me. Totally can check the "how do we plop the light-source" box though.
 
 ![flying towards the sunrise](./images/8.png)
 
