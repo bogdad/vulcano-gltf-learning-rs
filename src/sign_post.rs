@@ -8,10 +8,7 @@ use crate::things::primitives::PrimitiveTriangle;
 use crate::things::texts::Texts;
 
 pub struct SignPost {
-  device: Arc<Device>,
-  mesh: PrimitiveTriangle,
   model: Model,
-  text: String,
 }
 
 impl SignPost {
@@ -26,10 +23,7 @@ impl SignPost {
     );
     let model = mesh.mesh.get_buffers(device);
     SignPost {
-      device: device.clone(),
-      mesh,
       model,
-      text,
     }
   }
 

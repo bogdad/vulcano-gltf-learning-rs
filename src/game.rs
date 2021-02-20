@@ -15,6 +15,7 @@ use winit::event::{Event, WindowEvent};
 use winit::event_loop::ControlFlow;
 
 use std::boxed::Box;
+use std::convert::TryInto;
 use std::sync::Arc;
 
 use crate::camera::Camera;
@@ -24,20 +25,24 @@ use crate::sign_post::SignPost;
 use crate::things::primitives::{PrimitiveCube, PrimitiveTriangle};
 use crate::things::texts::Texts;
 use crate::vs;
+use crate::fs;
 use crate::world::World;
 use crate::Graph;
 use crate::Model;
+use crate::render::scene::MergedScene;
 
 pub struct Game {
-  executor: Executor,
   graph: Graph,
   camera: Camera,
   world: World,
   recreate_swapchain: bool,
   models: Vec<Model>,
   uniform_buffer: CpuBufferPool<vs::ty::Data>,
+  environment_buffer: CpuBufferPool<fs::ty::Environment>,
+  point_lights_buffer: CpuBufferPool<fs::ty::PointLights>,
+  directional_lights_buffer: CpuBufferPool<fs::ty::DirectionalLights>,
+  spot_lights_buffer: CpuBufferPool<fs::ty::SpotLights>,
   previous_frame_end: Option<Box<dyn GpuFuture>>,
-  texts: Texts,
   textures: Textures,
   texture: Option<Arc<ImmutableImage<Format>>>,
   sampler: Option<Arc<Sampler>>,
@@ -90,7 +95,7 @@ impl Game {
       ));
     }
 
-    let world = World::new(executor.clone(), &graph, sign_posts);
+    let world = World::new(executor, &graph, sign_posts);
 
     let recreate_swapchain = false;
 
@@ -112,21 +117,31 @@ impl Game {
 
     let uniform_buffer =
       CpuBufferPool::<vs::ty::Data>::new(graph.device.clone(), BufferUsage::all());
+    let environment_buffer =
+      CpuBufferPool::<fs::ty::Environment>::new(graph.device.clone(), BufferUsage::all());
+    let point_lights_buffer =
+      CpuBufferPool::<fs::ty::PointLights>::new(graph.device.clone(), BufferUsage::all());
+    let directional_lights_buffer =
+      CpuBufferPool::<fs::ty::DirectionalLights>::new(graph.device.clone(), BufferUsage::all());
+    let spot_lights_buffer =
+      CpuBufferPool::<fs::ty::SpotLights>::new(graph.device.clone(), BufferUsage::all());
 
     let textures = Textures::new(&texts);
 
     let previous_frame_end = Some(sync::now(graph.device.clone()).boxed());
 
     Game {
-      executor,
       graph,
       camera,
       world,
       recreate_swapchain,
       models,
       uniform_buffer,
+      environment_buffer,
+      point_lights_buffer,
+      directional_lights_buffer,
+      spot_lights_buffer,
       previous_frame_end,
-      texts,
       textures,
       texture: None,
       sampler: None,
@@ -165,6 +180,59 @@ impl Game {
       let uniform_data = self.camera.proj(&self.graph);
       self.uniform_buffer.next(uniform_data).unwrap()
     };
+
+    let mut all_scene = MergedScene::default();
+    for model in self.world.get_models() {
+      all_scene.point_lights.extend(model.1.point_lights.iter().map(|arc| arc.as_ref()));
+      all_scene.directional_lights.extend(model.1.directional_lights.iter().map(|arc| arc.as_ref()));
+      all_scene.spot_lights.extend(model.1.spot_lights.iter().map(|arc| arc.as_ref()));
+    }
+
+    let environment_buffer_subbuffer = {
+      let environment = fs::ty::Environment {
+        ambient_color: [0.3, 0.3, 0.3],
+        camera_position: self.camera.pos.into(),
+        point_light_count: all_scene.point_lights.len() as i32,
+        directional_light_count: all_scene.directional_lights.len() as i32,
+        spot_light_count: all_scene.spot_lights.len() as i32,
+        ..Default::default()
+      };
+      self.environment_buffer.next(environment).unwrap()
+    };
+    all_scene.point_lights.reserve_exact(128);
+    for _i in all_scene.point_lights.len()..128 {
+      all_scene.point_lights.push(Default::default());
+    }
+    all_scene.spot_lights.reserve_exact(128);
+    for _i in all_scene.spot_lights.len()..128 {
+      all_scene.spot_lights.push(Default::default());
+    }
+    all_scene.directional_lights.reserve_exact(16);
+    for _i in all_scene.directional_lights.len()..16 {
+      all_scene.directional_lights.push(Default::default());
+    }
+
+    let point_lights_buffer_subbuffer = {
+      let point_lights = fs::ty::PointLights {
+        plight: all_scene.point_lights.as_slice().try_into().unwrap(),
+      };
+      self.point_lights_buffer.next(point_lights).unwrap()
+    };
+
+    let directional_lights_buffer_subbuffer = {
+      let directional_lights = fs::ty::DirectionalLights {
+        dlight: all_scene.directional_lights.as_slice().try_into().unwrap(),
+      };
+      self.directional_lights_buffer.next(directional_lights).unwrap()
+    };
+
+    let spot_lights_buffer_subbuffer = {
+      let spot_lights = fs::ty::SpotLights {
+        slight: all_scene.spot_lights.as_slice().try_into().unwrap(),
+      };
+      self.spot_lights_buffer.next(spot_lights).unwrap()
+    };
+
     let layout = self.graph.pipeline.descriptor_set_layout(0).unwrap();
 
     let set = Arc::new(
@@ -175,6 +243,14 @@ impl Game {
           self.texture.as_ref().unwrap().clone(),
           self.sampler.as_ref().unwrap().clone(),
         )
+        .unwrap()
+        .add_buffer(environment_buffer_subbuffer)
+        .unwrap()
+        .add_buffer(point_lights_buffer_subbuffer)
+        .unwrap()
+        .add_buffer(directional_lights_buffer_subbuffer)
+        .unwrap()
+        .add_buffer(spot_lights_buffer_subbuffer)
         .unwrap()
         .build()
         .unwrap(),
@@ -210,7 +286,7 @@ impl Game {
       model.draw_indexed(&mut builder, self.graph.pipeline.clone(), set.clone());
     }
     for model in self.world.get_models() {
-      model.draw_indexed(&mut builder, self.graph.pipeline.clone(), set.clone());
+      model.0.draw_indexed(&mut builder, self.graph.pipeline.clone(), set.clone());
     }
 
     let mut y = 50.0;

@@ -10,7 +10,10 @@ use std::sync::RwLock;
 use crate::actor::Actor;
 use crate::executor::Executor;
 use crate::render::model::Model;
+use crate::render::scene::Scene;
 use crate::things::terrain_generation;
+
+use crate::fs;
 
 fn xindex(base: f32, step: isize) -> f32 {
   Sky::X * (step as f32) + base
@@ -52,7 +55,7 @@ fn crop(x: isize, bound: usize) -> Option<usize> {
 
 #[derive(Default)]
 struct CacheCellInner {
-  model: Option<Model>,
+  model: Option<(Model, Scene)>,
 }
 
 #[derive(Default)]
@@ -86,8 +89,8 @@ impl CacheCell {
             return;
           }
           let res =
-            terrain_generation::execute(32, Sky::X as i32, x + Sky::X / 2.0, z + Sky::Z / 2.0)
-              .get_buffers(&device);
+            (terrain_generation::execute(32, Sky::X as i32, x + Sky::X / 2.0, z + Sky::Z / 2.0)
+              .get_buffers(&device), Default::default());
           locked.model = Some(res);
         }
       }
@@ -119,7 +122,7 @@ impl CacheCell {
     self.block();
   }
 
-  fn status(&self) -> String {
+  fn _status(&self) -> String {
     let model = {
       let read_locked = self.inner.read().unwrap();
       read_locked.model.is_some()
@@ -131,7 +134,7 @@ impl CacheCell {
     )
   }
 
-  fn model(&self) -> Option<Model> {
+  fn model(&self) -> Option<(Model, Scene)> {
     let read_locked = self.inner.read().unwrap();
     read_locked.model.clone()
   }
@@ -261,8 +264,8 @@ impl Sky {
     }
   }
 
-  pub fn get_current(&self) -> Vec<Model> {
-    let mut res: Vec<Model> = vec![self.cache[giiu(0, 0)].model().as_ref().unwrap().clone()];
+  pub fn get_current(&self) -> Vec<(Model, Scene)> {
+    let mut res: Vec<(Model, Scene)> = vec![self.cache[giiu(0, 0)].model().as_ref().unwrap().clone()];
     for (i, j) in &self.ordered_cells {
       if i.abs() + j.abs() < 4 {
         if let Some(elem) = &self.cache[giiu(*i, *j)].model() {
@@ -270,6 +273,20 @@ impl Sky {
         };
       }
     }
+    res[0].1.point_lights = vec![
+      Arc::new(fs::ty::PointLight {
+        position: [-100.0, -100.0, -1000.0],
+        color: [1.0, 1.0, 1.0],
+        intensity: 1000.0*1000.0,
+        ..Default::default()
+      }),
+      Arc::new(fs::ty::PointLight {
+        position: [-13.0, 10.0, -14.0],
+        color: [1.0, 1.0, 0.0],
+        intensity: 400.0,
+        ..Default::default()
+      }),
+    ];
     res
   }
 
@@ -289,7 +306,7 @@ impl Sky {
 }
 
 impl Actor for Sky {
-  fn get_model(&self, _device: &Arc<Device>) -> Vec<Model> {
+  fn get_model(&self, _device: &Arc<Device>) -> Vec<(Model, Scene)> {
     self.get_current()
   }
 }

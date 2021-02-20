@@ -3,10 +3,30 @@
 
 ## Questions:
 
+
+
+- [ ] how do we create sunrise
+- [x] how do we plop the light-sources
 - [x] how do we write text on things in 3d
 - [x] how do we generate random "cloud like landcapes" on the fly
 - [ ] how do vertex normals work
 - [x] how do coordinate systems work
+
+## how do we create sunrise
+
+Here is what i learnt just now.
+There seem to be multiple ways to do lighting. Main consideration is - we need to do a computation linear in number of lights times number of geometry things. We also may have a lot of light sources, and they can be dynamic. Seems we cant just sent everything to the fragment shader and do this the easy way.
+
+So the cool approach everybody are doing is - split the gpu computation into a 2 phases, one does geometry and prepares for the lightning and another does lightning. That can be done in different sequences giving few named methods, like:
+
+- Deferred Lighting (combine all radiances from all lights then do a geometry + lightning).
+- Deferred Shading (do all the meshes into the view screen buffer, then do the lightning for each source)
+- Light-indexed Deferred Rendering (first pass get indices of lights that are visible then do the geometry with indices)
+
+I however managed to only do the thing Amethyst does in its shaded shader - https://github.com/amethyst/amethyst/blob/main/amethyst_rendy/shaders/fragment/shaded.frag
+Not yet sure if albedo counting stuff is the "Deferred Lighting: combine all radiances from all lights", but the picture does look not like a sunrise to me. Totally can check the "how do we plop the light-source" box though.
+
+![flying towards the sunrise](./images/8.png)
 
 ## how do we write text on things in 3d
 

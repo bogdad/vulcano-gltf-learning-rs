@@ -173,7 +173,7 @@ impl MyMesh {
     Model::new(vertex_buffer, normals_buffer, index_buffer)
   }
 
-  fn translation_decomposed(&self) -> (Vector3<f32>, Quaternion<f32>, [f32; 3]) {
+  fn _translation_decomposed(&self) -> (Vector3<f32>, Quaternion<f32>, [f32; 3]) {
     let m = &self.transform;
     let translation = Vector3::new(m[3][0], m[3][1], m[3][2]);
     let mut i = Matrix3::new(
@@ -186,11 +186,11 @@ impl MyMesh {
     i.x.mul_assign(1.0 / sx);
     i.y.mul_assign(1.0 / sy);
     i.z.mul_assign(1.0 / sz);
-    let r = from_matrix(i);
+    let r = _from_matrix(i);
     (translation, r, scale)
   }
 
-  fn update_transform(
+  fn _update_transform(
     &mut self,
     translation: Vector3<f32>,
     rotation: Quaternion<f32>,
@@ -215,7 +215,7 @@ impl MyMesh {
 }
 
 /// Convert a rotation matrix to an equivalent quaternion.
-fn from_matrix(mat: Matrix3<f32>) -> Quaternion<f32> {
+fn _from_matrix(mat: Matrix3<f32>) -> Quaternion<f32> {
   let trace = mat.trace();
   if trace >= 0.0 {
     let ss = (1.0 + trace).sqrt();

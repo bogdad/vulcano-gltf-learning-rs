@@ -9,6 +9,7 @@ use std::path::Path;
 use std::sync::Arc;
 
 use crate::render::mymesh::MyMesh;
+use crate::render::scene::Scene;
 use crate::utils::{Normal, Vertex};
 
 #[derive(Clone, Debug)]
@@ -17,6 +18,8 @@ pub struct Model {
   normals: Arc<CpuAccessibleBuffer<[Normal]>>,
   index: Arc<CpuAccessibleBuffer<[u32]>>,
 }
+
+pub type ModelScene = (Model, Scene);
 
 impl Model {
   pub fn new(
@@ -51,7 +54,7 @@ impl Model {
       .unwrap();
   }
 
-  pub fn from_gltf(path: &Path, device: &Arc<Device>) -> Model {
+  pub fn _from_gltf(path: &Path, device: &Arc<Device>) -> Model {
     MyMesh::from_gltf(path).get_buffers(device)
   }
 }

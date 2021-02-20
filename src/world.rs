@@ -4,7 +4,7 @@ use winit::event::{KeyboardInput, VirtualKeyCode};
 use std::fmt;
 
 use crate::executor::Executor;
-use crate::render::model::Model;
+use crate::render::model::ModelScene;
 use crate::sign_post::SignPost;
 use crate::sky::Sky;
 use crate::Graph;
@@ -69,22 +69,19 @@ impl World {
 
   pub fn react(&mut self, input: &KeyboardInput) {
     if let KeyboardInput {
-      virtual_keycode: Some(key_code),
+      virtual_keycode: Some(VirtualKeyCode::Escape),
       ..
     } = input
     {
-      match key_code {
-        VirtualKeyCode::Escape => self.command(),
-        _ => (),
-      }
+      self.command();
     }
   }
 
-  pub fn get_models(&self) -> Vec<Model> {
+  pub fn get_models(&self) -> Vec<ModelScene> {
     let mut res = vec![];
     res.extend(self.sky.get_current());
     for sign_post in &self.sign_posts {
-      res.push(sign_post.get_model().clone());
+      res.push((sign_post.get_model().clone(), Default::default()));
     }
     res
   }
