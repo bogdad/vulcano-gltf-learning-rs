@@ -36,7 +36,9 @@ impl PrimitiveCube {
 
     let transform = Matrix4::one();
 
-    let tex = (0..vertex.len()).map(|_i| Point2::new(-1.0, -1.0)).collect();
+    let tex = (0..vertex.len())
+      .map(|_i| Point2::new(-1.0, -1.0))
+      .collect();
 
     let tex_offset = (0..vertex.len()).map(|_i| Point2::new(0, 0)).collect();
 

@@ -37,16 +37,16 @@ mod world;
 
 mod executor;
 mod render;
+mod shaders;
 mod things;
 mod utils;
-mod shaders;
 
 use executor::Executor;
 use game::Game;
 use render::model::Model;
-use utils::{Normal, Vertex};
-use shaders::vs;
 use shaders::fs;
+use shaders::vs;
+use utils::{Normal, Vertex};
 
 pub struct Graph {
   surface: Arc<Surface<Window>>,

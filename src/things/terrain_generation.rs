@@ -418,7 +418,9 @@ pub fn execute(sub_division: i32, mesh_size: i32, x: f32, z: f32) -> MyMesh {
     .collect();
   let transform = <Matrix4<f32> as One>::one();
 
-  let tex = (0..vertex.len()).map(|_i| Point2::new(-1.0, -1.0)).collect();
+  let tex = (0..vertex.len())
+    .map(|_i| Point2::new(-1.0, -1.0))
+    .collect();
   let tex_offset = (0..vertex.len()).map(|_i| Point2::new(0, 0)).collect();
 
   let mut res = MyMesh::new(vertex, tex, tex_offset, normals, index, transform);
