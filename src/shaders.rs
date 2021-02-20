@@ -23,8 +23,7 @@ layout(set = 0, binding = 0) uniform Data {
 
 void main() {
     mat4 worldview = uniforms.view * uniforms.world;
-    //v_normal = transpose(inverse(mat3(worldview))) * normal;
-    v_normal = mat3(worldview) * normal;
+    v_normal = transpose(inverse(mat3(worldview))) * normal;
     v_tex = tex;
     v_tex_offset = tex_offset;
     gl_Position = uniforms.proj * worldview * vec4(position, 1.0);
@@ -40,18 +39,27 @@ pub mod fs {
       src: "
 #version 450
 
+struct PointLight {
+    vec3 position;
+    vec3 color;
+    float intensity;
+};
+
 layout(location = 0) in vec3 v_normal;
 layout(location = 1) in vec2 v_tex2;
 layout(location = 2) in vec2 v_tex_offset2;
 
 layout(location = 0) out vec4 f_color;
 
-const vec3 LIGHT = vec3(0.0, 0.0, 1.0);
+const vec3 LIGHT_VEC = vec3(0.0, 0.0, 1.0);
 
 layout(set = 0, binding = 1) uniform sampler2D textureSrc;
+layout(std140, set = 0, binding = 2) uniform PointLights {
+    PointLight plight[128];
+};
 
 void main() {
-    float brightness = dot(normalize(v_normal), normalize(LIGHT));
+    float brightness = dot(normalize(v_normal), normalize(LIGHT_VEC));
     vec3 dark_color = vec3(0.6, 0.6, 0.6);
     vec3 regular_color = vec3(1.0, 1.0, 1.0);
     if (v_tex2.x < 0 || v_tex2.y < 0) {

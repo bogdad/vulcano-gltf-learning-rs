@@ -44,7 +44,7 @@ impl PrimitiveCube {
 
     let mut mesh = MyMesh::new(vertex, tex, tex_offset, normals, index, transform);
     mesh.update_transform_2(Vector3::from(xx), Matrix4::one(), [x, y, z]);
-    println!("mesh {:?}", mesh);
+    // println!("mesh {:?}", mesh);
     PrimitiveCube { mesh }
   }
 }
@@ -76,7 +76,7 @@ impl PrimitiveTriangle {
     let tex_offset = (0..vertex.len()).map(|_i| Point2::new(0, 0)).collect();
     let mut mesh = MyMesh::new(vertex, tex, tex_offset, normals, index, transform);
     mesh.update_transform_2(pos.to_vec(), Matrix4::one(), [10.0, 10.0, 10.0]);
-    println!("mesh {:?}", mesh);
+    // println!("mesh {:?}", mesh);
     PrimitiveTriangle { mesh }
   }
 
@@ -122,9 +122,9 @@ impl PrimitiveTriangle {
     let transform = Matrix4::one();
 
     let mesh = MyMesh::new(vertex, tex, tex_offset, normals, index, transform);
-    //mesh.update_transform_2(pos.to_vec(), Matrix4::one(), [10.0, 10.0, 10.0]);
-    println!("mesh {:?}", mesh);
-    println!("tex: {:?}", mesh.tex);
+    // mesh.update_transform_2(pos.to_vec(), Matrix4::one(), [10.0, 10.0, 10.0]);
+    // println!("mesh {:?}", mesh);
+    // println!("tex: {:?}", mesh.tex);
     PrimitiveTriangle { mesh }
   }
 }

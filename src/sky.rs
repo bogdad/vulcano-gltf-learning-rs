@@ -78,7 +78,7 @@ impl CacheCell {
     let weak_device = Arc::downgrade(device);
     let weak_self_inner = Arc::downgrade(&self.inner);
     let fut = async move {
-      println!("generated ({:?},{:?})", x, z);
+      // println!("generated ({:?},{:?})", x, z);
       if let Some(device) = weak_device.upgrade() {
         if let Some(self_inner) = weak_self_inner.upgrade() {
           let mut locked = self_inner.write().unwrap();
@@ -114,7 +114,7 @@ impl CacheCell {
         return;
       }
     }
-    //println!("blocking on sky");
+    println!("blocking on sky");
     self.spawn_region(executor, device, x, z);
     self.block();
   }
@@ -242,7 +242,7 @@ impl Sky {
             crop(xt as isize + indices.0, Sky::X_ROWS),
             crop(zt as isize + indices.1, Sky::Z_ROWS),
           );
-          println!("moving {:?} {:?}", (xt, zt), (xs, zs));
+          //println!("moving {:?} {:?}", (xt, zt), (xs, zs));
           if zs == None || xs == None {
             self.cache[ii(xt, zt)] = Default::default();
           } else {
@@ -250,14 +250,14 @@ impl Sky {
           }
         }
       }
-      println!(
+      /*println!(
         "cache {:?}",
         self.cache.iter().map(|e| e.status()).collect::<Vec<_>>()
-      );
+      );*/
 
       self.x += Vector2::new(Sky::X * indices.0 as f32, Sky::X * indices.0 as f32);
       self.z += Vector2::new(Sky::Z * indices.1 as f32, Sky::Z * indices.1 as f32);
-      println!("changing x {:?} z {:?}", self.x, self.z);
+      // println!("changing x {:?} z {:?}", self.x, self.z);
     }
   }
 
@@ -278,7 +278,7 @@ impl Sky {
   }
 
   // indices in the grid. assumption is square [(xs, xe),(zs, ze)] is the central square in the grid
-  fn real_inds(&self, l: f32, w: f32) -> (isize, isize) {
+  fn real_inds(&self, l: f32, _w: f32) -> (isize, isize) {
     let gc = Vector2::new((self.x.x + self.x.y) / 2.0, (self.z.x + self.z.y) / 2.0);
     //println!("x {:?} z {:?} gc {:?}", self.x, self.z, gc);
     (
@@ -289,7 +289,7 @@ impl Sky {
 }
 
 impl Actor for Sky {
-  fn get_model(&self, device: &Arc<Device>) -> Vec<Model> {
+  fn get_model(&self, _device: &Arc<Device>) -> Vec<Model> {
     self.get_current()
   }
 }

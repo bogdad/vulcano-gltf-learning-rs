@@ -35,7 +35,7 @@ impl MyMesh {
     index: Vec<u32>,
     transform: Matrix4<f32>,
   ) -> MyMesh {
-    let max_x = vertex
+    /*let max_x = vertex
       .iter()
       .cloned()
       .map(|p| p.x)
@@ -65,10 +65,11 @@ impl MyMesh {
       .cloned()
       .map(|p| p.z)
       .fold(-0.0 / 0.0, f32::min);
-    println!(
+      */
+    /*println!(
       "mymesh: x ({}, {}) y ({}, {}) z ({}, {})",
       min_x, max_x, min_y, max_y, min_z, max_z
-    );
+    );*/
     MyMesh {
       vertex,
       tex,
@@ -155,12 +156,12 @@ impl MyMesh {
 
     let indices = self.index.iter().cloned();
 
-    println!(
+    /*println!(
       "mesh properties: vertices {} normals {} indices {}",
       vertices_vec.len(),
       normals_vec.len(),
       self.index.len()
-    );
+    );*/
 
     let vertex_buffer =
       CpuAccessibleBuffer::from_iter(device.clone(), BufferUsage::all(), false, vertices).unwrap();
