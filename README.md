@@ -41,6 +41,8 @@ Then we need to discard non red texture pixels, and we get this:
 
 Thats feels very naive, but works for our purposes.
 
+Bug - each glyph seems to be of different height, so the "-" sign gets to the top of its spot and not to the middle as usual. Will need fixage.
+
 ## how do we generate random "cloud like landcapes" on the fly
 
 ![screenshot](./images/4.png)
