@@ -190,11 +190,13 @@ impl Game {
 
     let environment_buffer_subbuffer = {
       let environment = fs::ty::Environment {
-        ambient_color: [0.3, 0.3, 0.3],
+        ambient_color: [0.0, 0.0, 0.0],
         camera_position: self.camera.pos.into(),
         point_light_count: all_scene.point_lights.len() as i32,
         directional_light_count: all_scene.directional_lights.len() as i32,
         spot_light_count: all_scene.spot_lights.len() as i32,
+        sun_color: [0.6, 0.6, 0.65],
+        sun_direction: [-0.577, -0.577, -0.577],
         ..Default::default()
       };
       self.environment_buffer.next(environment).unwrap()

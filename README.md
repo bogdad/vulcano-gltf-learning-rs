@@ -28,6 +28,15 @@ Not yet sure if albedo counting stuff is the "Deferred Lighting: combine all rad
 
 ![flying towards the sunrise](./images/8.png)
 
+Now, we can create reflection / diffuse of the sun like this:
+https://github.com/jwagner/webglice/blob/master/shaders/sun.glsl
+
+that gives us:
+
+![sun reflection](./images/9.png)
+
+next is the creation of actual sun
+
 ## how do we write text on things in 3d
 
 I created a very large texture with all possible texts, like this.

@@ -82,6 +82,9 @@ layout(std140, set = 0, binding = 2) uniform Environment {
     int point_light_count;
     int directional_light_count;
     int spot_light_count;
+    // https://github.com/jwagner/webglice/blob/master/shaders/sun.glsl
+    vec3 sun_color;
+    vec3 sun_direction;
 };
 
 layout(std140, set = 0, binding = 3) uniform PointLights {
@@ -95,6 +98,15 @@ layout(std140, set = 0, binding = 4) uniform DirectionalLights {
 layout(std140, set = 0, binding = 5) uniform SpotLights {
     SpotLight slight[128];
 };
+
+// https://github.com/jwagner/webglice/blob/master/shaders/sun.glsl
+vec3 sun(const vec3 surface_normal, const vec3 eye_normal, float shiny, float spec, float diffuse){
+  vec3 diffuse_color = max(dot(sun_direction, surface_normal), 0.0) * sun_color * diffuse;
+  vec3 reflection = normalize(reflect(-sun_direction, surface_normal));
+  float direction = max(0.0, dot(eye_normal, reflection));
+  vec3 specular = pow(direction, shiny) * sun_color * spec;
+  return diffuse_color + specular;
+}
 
 void main() {
     float brightness = dot(normalize(v_normal), normalize(LIGHT_VEC));
@@ -123,8 +135,16 @@ void main() {
       }
       lighting += ambient_color;
 
-      f_color = vec4(mix(dark_color, regular_color, brightness), 1.0);
-      f_color = vec4(lighting, 1.0) * f_color;
+      vec3 eye_normal = normalize(camera_position - v_position2);
+      vec3 sun_light = sun(normal, eye_normal,  15.0, 2.5, 1.0);
+      vec3 color = mix(
+        mix(
+          mix(dark_color, regular_color, brightness),
+          lighting,
+          0.5),
+        sun_light,
+        0.5);
+      f_color = vec4(color, 1.0);
     } else {
       f_color = texture(textureSrc, v_tex2);
       if (f_color.r < 0.1) {
