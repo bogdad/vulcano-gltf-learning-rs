@@ -2,7 +2,7 @@ use cgmath::{Point3, Vector3};
 use vulkano::buffer::cpu_pool::CpuBufferPool;
 use vulkano::buffer::BufferUsage;
 use vulkano::command_buffer::{AutoCommandBufferBuilder, SubpassContents};
-use vulkano::descriptor::descriptor_set::PersistentDescriptorSet;
+use vulkano::descriptor::descriptor_set::{PersistentDescriptorSet, DescriptorSet};
 use vulkano::format::Format;
 use vulkano::image::ImmutableImage;
 use vulkano::sampler::{Filter, MipmapMode, Sampler, SamplerAddressMode};
@@ -176,6 +176,93 @@ impl Game {
       self.graph.recreate_swapchain();
       self.recreate_swapchain = false;
     }
+
+    let set = self.main_set();
+
+    let (image_num, suboptimal, acquire_future) =
+      match swapchain::acquire_next_image(self.graph.swapchain.clone(), None) {
+        Ok(r) => r,
+        Err(AcquireError::OutOfDate) => {
+          self.recreate_swapchain = true;
+          return;
+        }
+        Err(e) => panic!("Failed to acquire next image: {:?}", e),
+      };
+
+    if suboptimal {
+      self.recreate_swapchain = true;
+    }
+
+    let mut builder = AutoCommandBufferBuilder::primary_one_time_submit(
+      self.graph.device.clone(),
+      self.graph.queue.family(),
+    )
+    .unwrap();
+    builder
+      .begin_render_pass(
+        self.graph.framebuffers[image_num].clone(),
+        SubpassContents::Inline,
+        vec![[0.0, 0.0, 0.0, 1.0].into(), 1f32.into()],
+      )
+      .unwrap();
+    for model in &self.models {
+      model.draw_indexed(&mut builder, self.graph.pipeline.clone(), set.clone());
+    }
+    for model in self.world.get_models() {
+      model
+        .0
+        .draw_indexed(&mut builder, self.graph.pipeline.clone(), set.clone());
+    }
+
+    builder.next_subpass(SubpassContents::Inline).unwrap();
+
+    builder.end_render_pass().unwrap();
+
+
+
+    let mut y = 50.0;
+    let status = self.status_string();
+    for line in status.split('\n') {
+      self
+        .graph
+        .draw_text
+        .queue_text(200.0, y, 40.0, [1.0, 1.0, 1.0, 1.0], line);
+      y += 40.0;
+    }
+    builder.draw_text(&mut self.graph.draw_text, image_num);
+
+    let command_buffer = builder.build().unwrap();
+
+    let future = self
+      .previous_frame_end
+      .take()
+      .unwrap()
+      .join(acquire_future)
+      .then_execute(self.graph.queue.clone(), command_buffer)
+      .unwrap()
+      .then_swapchain_present(
+        self.graph.queue.clone(),
+        self.graph.swapchain.clone(),
+        image_num,
+      )
+      .then_signal_fence_and_flush();
+
+    match future {
+      Ok(future) => {
+        self.previous_frame_end = Some(future.boxed());
+      }
+      Err(FlushError::OutOfDate) => {
+        self.recreate_swapchain = true;
+        self.previous_frame_end = Some(sync::now(self.graph.device.clone()).boxed());
+      }
+      Err(e) => {
+        println!("Failed to flush future: {:?}", e);
+        self.previous_frame_end = Some(sync::now(self.graph.device.clone()).boxed());
+      }
+    }
+  }
+
+  fn main_set(&self) -> Arc<dyn DescriptorSet + Sync + Send> {
     let uniform_buffer_subbuffer = {
       let uniform_data = self.camera.proj(&self.graph);
       self.uniform_buffer.next(uniform_data).unwrap()
@@ -266,84 +353,7 @@ impl Game {
         .build()
         .unwrap(),
     );
-
-    let (image_num, suboptimal, acquire_future) =
-      match swapchain::acquire_next_image(self.graph.swapchain.clone(), None) {
-        Ok(r) => r,
-        Err(AcquireError::OutOfDate) => {
-          self.recreate_swapchain = true;
-          return;
-        }
-        Err(e) => panic!("Failed to acquire next image: {:?}", e),
-      };
-
-    if suboptimal {
-      self.recreate_swapchain = true;
-    }
-
-    let mut builder = AutoCommandBufferBuilder::primary_one_time_submit(
-      self.graph.device.clone(),
-      self.graph.queue.family(),
-    )
-    .unwrap();
-    builder
-      .begin_render_pass(
-        self.graph.framebuffers[image_num].clone(),
-        SubpassContents::Inline,
-        vec![[0.0, 0.0, 0.0, 1.0].into(), 1f32.into()],
-      )
-      .unwrap();
-    for model in &self.models {
-      model.draw_indexed(&mut builder, self.graph.pipeline.clone(), set.clone());
-    }
-    for model in self.world.get_models() {
-      model
-        .0
-        .draw_indexed(&mut builder, self.graph.pipeline.clone(), set.clone());
-    }
-
-    let mut y = 50.0;
-    let status = self.status_string();
-    for line in status.split('\n') {
-      self
-        .graph
-        .draw_text
-        .queue_text(200.0, y, 40.0, [1.0, 1.0, 1.0, 1.0], line);
-      y += 40.0;
-    }
-
-    builder.end_render_pass().unwrap();
-    builder.draw_text(&mut self.graph.draw_text, image_num);
-
-    let command_buffer = builder.build().unwrap();
-
-    let future = self
-      .previous_frame_end
-      .take()
-      .unwrap()
-      .join(acquire_future)
-      .then_execute(self.graph.queue.clone(), command_buffer)
-      .unwrap()
-      .then_swapchain_present(
-        self.graph.queue.clone(),
-        self.graph.swapchain.clone(),
-        image_num,
-      )
-      .then_signal_fence_and_flush();
-
-    match future {
-      Ok(future) => {
-        self.previous_frame_end = Some(future.boxed());
-      }
-      Err(FlushError::OutOfDate) => {
-        self.recreate_swapchain = true;
-        self.previous_frame_end = Some(sync::now(self.graph.device.clone()).boxed());
-      }
-      Err(e) => {
-        println!("Failed to flush future: {:?}", e);
-        self.previous_frame_end = Some(sync::now(self.graph.device.clone()).boxed());
-      }
-    }
+    set
   }
 
   pub fn tick(&mut self) {

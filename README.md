@@ -6,11 +6,17 @@
 
 
 - [ ] how do we create sunrise
+- [ ] how do we create skybox
 - [x] how do we plop the light-sources
 - [x] how do we write text on things in 3d
 - [x] how do we generate random "cloud like landcapes" on the fly
 - [ ] how do vertex normals work
 - [x] how do coordinate systems work
+
+## how do we create skybox
+
+dont know yet.
+people seem to be creating skyboxes with deferred rendering, but we currently have only a forward pass.
 
 ## how do we create sunrise
 
