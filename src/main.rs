@@ -44,8 +44,8 @@ mod utils;
 use executor::Executor;
 use game::Game;
 use render::model::Model;
-use shaders::fs;
-use shaders::vs;
+use shaders::main::fs;
+use shaders::main::vs;
 use utils::{Normal, Vertex};
 
 pub struct Graph {

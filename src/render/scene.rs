@@ -1,4 +1,4 @@
-use crate::shaders::fs::ty::{DirectionalLight, PointLight, SpotLight};
+use crate::shaders::main::fs::ty::{DirectionalLight, PointLight, SpotLight};
 
 use std::sync::Arc;
 
