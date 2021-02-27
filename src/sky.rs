@@ -88,9 +88,11 @@ impl CacheCell {
           if locked.model.is_some() {
             return;
           }
-          let res =
-            (terrain_generation::execute(32, Sky::X as i32, x + Sky::X / 2.0, z + Sky::Z / 2.0)
-              .get_buffers(&device), Default::default());
+          let res = (
+            terrain_generation::execute(32, Sky::X as i32, x + Sky::X / 2.0, z + Sky::Z / 2.0)
+              .get_buffers(&device),
+            Default::default(),
+          );
           locked.model = Some(res);
         }
       }
@@ -265,7 +267,8 @@ impl Sky {
   }
 
   pub fn get_current(&self) -> Vec<(Model, Scene)> {
-    let mut res: Vec<(Model, Scene)> = vec![self.cache[giiu(0, 0)].model().as_ref().unwrap().clone()];
+    let mut res: Vec<(Model, Scene)> =
+      vec![self.cache[giiu(0, 0)].model().as_ref().unwrap().clone()];
     for (i, j) in &self.ordered_cells {
       if i.abs() + j.abs() < 4 {
         if let Some(elem) = &self.cache[giiu(*i, *j)].model() {
@@ -277,7 +280,7 @@ impl Sky {
       Arc::new(fs::ty::PointLight {
         position: [-100.0, -100.0, -1000.0],
         color: [1.0, 1.0, 1.0],
-        intensity: 1000.0*1000.0,
+        intensity: 1000.0 * 1000.0,
         ..Default::default()
       }),
       Arc::new(fs::ty::PointLight {

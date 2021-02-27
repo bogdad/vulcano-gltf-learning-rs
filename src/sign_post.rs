@@ -22,9 +22,7 @@ impl SignPost {
       texture_size,
     );
     let model = mesh.mesh.get_buffers(device);
-    SignPost {
-      model,
-    }
+    SignPost { model }
   }
 
   pub fn get_model(&self) -> &Model {

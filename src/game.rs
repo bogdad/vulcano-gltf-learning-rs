@@ -20,16 +20,16 @@ use std::sync::Arc;
 
 use crate::camera::Camera;
 use crate::executor::Executor;
+use crate::fs;
+use crate::render::scene::MergedScene;
 use crate::render::textures::Textures;
 use crate::sign_post::SignPost;
 use crate::things::primitives::{PrimitiveCube, PrimitiveTriangle};
 use crate::things::texts::Texts;
 use crate::vs;
-use crate::fs;
 use crate::world::World;
 use crate::Graph;
 use crate::Model;
-use crate::render::scene::MergedScene;
 
 pub struct Game {
   graph: Graph,
@@ -183,9 +183,15 @@ impl Game {
 
     let mut all_scene = MergedScene::default();
     for model in self.world.get_models() {
-      all_scene.point_lights.extend(model.1.point_lights.iter().map(|arc| arc.as_ref()));
-      all_scene.directional_lights.extend(model.1.directional_lights.iter().map(|arc| arc.as_ref()));
-      all_scene.spot_lights.extend(model.1.spot_lights.iter().map(|arc| arc.as_ref()));
+      all_scene
+        .point_lights
+        .extend(model.1.point_lights.iter().map(|arc| arc.as_ref()));
+      all_scene
+        .directional_lights
+        .extend(model.1.directional_lights.iter().map(|arc| arc.as_ref()));
+      all_scene
+        .spot_lights
+        .extend(model.1.spot_lights.iter().map(|arc| arc.as_ref()));
     }
 
     let environment_buffer_subbuffer = {
@@ -225,7 +231,10 @@ impl Game {
       let directional_lights = fs::ty::DirectionalLights {
         dlight: all_scene.directional_lights.as_slice().try_into().unwrap(),
       };
-      self.directional_lights_buffer.next(directional_lights).unwrap()
+      self
+        .directional_lights_buffer
+        .next(directional_lights)
+        .unwrap()
     };
 
     let spot_lights_buffer_subbuffer = {
@@ -288,7 +297,9 @@ impl Game {
       model.draw_indexed(&mut builder, self.graph.pipeline.clone(), set.clone());
     }
     for model in self.world.get_models() {
-      model.0.draw_indexed(&mut builder, self.graph.pipeline.clone(), set.clone());
+      model
+        .0
+        .draw_indexed(&mut builder, self.graph.pipeline.clone(), set.clone());
     }
 
     let mut y = 50.0;

@@ -6,8 +6,8 @@ use vulkano::device::Device;
 
 use std::sync::Arc;
 
-use crate::render::mymesh::MyMesh;
 use crate::render::model::{Model, ModelScene};
+use crate::render::mymesh::MyMesh;
 use crate::render::scene::Scene;
 
 pub struct PrimitiveCube {
@@ -142,23 +142,40 @@ pub struct PrimitiveSkyBox {
 impl PrimitiveSkyBox {
   pub fn new(device: &Arc<Device>) -> Self {
     let faces: [[usize; 3]; 12] = [
-      [0, 1, 2], [2, 3, 0], [1, 5, 6],
-      [6, 2, 1], [5, 4, 7], [7, 6, 5],
-      [4, 0, 3], [3, 7, 4], [3, 2, 6],
-      [6, 7, 3], [4, 5, 1], [1, 0, 4],
+      [0, 1, 2],
+      [2, 3, 0],
+      [1, 5, 6],
+      [6, 2, 1],
+      [5, 4, 7],
+      [7, 6, 5],
+      [4, 0, 3],
+      [3, 7, 4],
+      [3, 2, 6],
+      [6, 7, 3],
+      [4, 5, 1],
+      [1, 0, 4],
     ];
 
     let vertices: [[f32; 3]; 8] = [
-      [-0.5, -0.5, -0.5], [0.5, -0.5, -0.5], [0.5, 0.5, -0.5],
-      [-0.5, 0.5, -0.5], [-0.5, -0.5, 0.5], [0.5, -0.5, 0.5],
-      [0.5, 0.5, 0.5], [-0.5, 0.5, 0.5],
+      [-0.5, -0.5, -0.5],
+      [0.5, -0.5, -0.5],
+      [0.5, 0.5, -0.5],
+      [-0.5, 0.5, -0.5],
+      [-0.5, -0.5, 0.5],
+      [0.5, -0.5, 0.5],
+      [0.5, 0.5, 0.5],
+      [-0.5, 0.5, 0.5],
     ];
 
+    let vertex: Vec<Point3<f32>> = vertices
+      .iter()
+      .map(|v| Point3::new(v[0], v[1], v[2]))
+      .collect();
 
-    let vertex: Vec<Point3<f32>> = vertices.iter().map(|v| Point3::new(v[0], v[1], v[2])).collect();
-
-    let triangles: Vec<Triangle<usize>> =
-      faces.iter().map(|f| Triangle::new(f[0], f[1], f[2])).collect();
+    let triangles: Vec<Triangle<usize>> = faces
+      .iter()
+      .map(|f| Triangle::new(f[0], f[1], f[2]))
+      .collect();
 
     let neighbours = Neighbors::new(vertex.clone(), triangles.clone());
 
@@ -167,7 +184,8 @@ impl PrimitiveSkyBox {
       .map(|v| Point3::from((-v.x, -v.y, -v.z)))
       .collect();
 
-    let index: Vec<u32> = faces.iter()
+    let index: Vec<u32> = faces
+      .iter()
       .flatten()
       .cloned()
       .map(|us| us as u32)
@@ -182,10 +200,7 @@ impl PrimitiveSkyBox {
 
     let mesh = MyMesh::new(vertex, tex, tex_offset, normals, index, transform);
     let model = mesh.get_buffers(&device);
-    PrimitiveSkyBox {
-      mesh,
-      model,
-    }
+    PrimitiveSkyBox { mesh, model }
   }
 
   pub fn get_model(&self) -> Vec<ModelScene> {

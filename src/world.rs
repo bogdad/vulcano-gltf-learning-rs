@@ -7,8 +7,8 @@ use crate::executor::Executor;
 use crate::render::model::ModelScene;
 use crate::sign_post::SignPost;
 use crate::sky::Sky;
-use crate::Graph;
 use crate::things::primitives::PrimitiveSkyBox;
+use crate::Graph;
 
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub enum Mode {
