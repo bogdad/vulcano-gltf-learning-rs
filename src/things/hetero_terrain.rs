@@ -121,7 +121,6 @@ pub fn hetero_terrain_new_perlin(
   lacunarity: f32,
   octaves: f32,
   offset: f32,
-  _noisebasis: i32,
 ) -> f32 {
   let pw_hl = lacunarity.powf(-hh);
   let (mut x, mut y, mut z) = (xi, yi, zi);

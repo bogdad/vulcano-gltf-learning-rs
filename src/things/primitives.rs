@@ -135,7 +135,6 @@ impl PrimitiveTriangle {
 }
 
 pub struct PrimitiveSkyBox {
-  mesh: MyMesh,
   model: Model,
 }
 
@@ -177,7 +176,7 @@ impl PrimitiveSkyBox {
       .map(|f| Triangle::new(f[0], f[1], f[2]))
       .collect();
 
-    let neighbours = Neighbors::new(vertex.clone(), triangles.clone());
+    let neighbours = Neighbors::new(vertex.clone(), triangles);
 
     let normals: Vec<Point3<f32>> = (0..vertex.len())
       .map(|i| neighbours.normal_for_vertex(i, |v| MintVector3::<f32>::from([v.x, v.y, v.z])))
@@ -200,7 +199,7 @@ impl PrimitiveSkyBox {
 
     let mesh = MyMesh::new(vertex, tex, tex_offset, normals, index, transform);
     let model = mesh.get_buffers(&device);
-    PrimitiveSkyBox { mesh, model }
+    PrimitiveSkyBox { model }
   }
 
   pub fn get_model(&self) -> Vec<ModelScene> {

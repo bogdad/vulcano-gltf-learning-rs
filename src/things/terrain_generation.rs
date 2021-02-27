@@ -15,15 +15,12 @@ fn landscape_gen(
   x: f32,
   y: f32,
   z: f32,
-  _mesh_size: i32,
   rseed: i32,
   nsize: f32,
-  nbasis: f32,
   depth: f32,
   dimension: f32,
   lacunarity: f32,
   offset: f32,
-  _invert: f32,
   height: f32,
   heightoffset: f32,
   sealevel: f32,
@@ -160,7 +157,6 @@ fn landscape_gen(
     lacunarity,
     depth, /* octaves */
     offset,
-    nbasis as i32,
   ) * 0.25;
 
   value = value * height + heightoffset;
@@ -346,12 +342,10 @@ fn grid_gen(sub_division: i32, mesh_size: i32) -> (Vec<Vertex>, Vec<Face>) {
       offset: f32, invert: f32, height:f32, heightoffset:f32, sealevel: f32, platlevel: f32) -> f32 {
       */
       let nsize = 0.33;
-      let nbasis = 0.0;
       let depth = 8.0;
       let dimension = 0.95;
       let lacunarity = 2.20;
       let offset = 0.50;
-      let invert = 0.0;
       let height = 0.23;
       let heightoffset = 0.0;
       let sealevel = -1.0;
@@ -360,15 +354,12 @@ fn grid_gen(sub_division: i32, mesh_size: i32) -> (Vec<Vertex>, Vec<Face>) {
         x,
         y,
         0.0,
-        mesh_size,
         1,
         nsize,
-        nbasis,
         depth,
         dimension,
         lacunarity,
         offset,
-        invert,
         height,
         heightoffset,
         sealevel,
