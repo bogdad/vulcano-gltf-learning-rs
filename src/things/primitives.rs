@@ -2,8 +2,13 @@ use cgmath::{EuclideanSpace, Matrix4, One, Point2, Point3, Vector3};
 use genmesh::generators::{Cube, IndexedPolygon};
 use genmesh::{MapToVertices, Neighbors, Triangle, Triangulate, Vertices};
 use mint::Vector3 as MintVector3;
+use vulkano::device::Device;
+
+use std::sync::Arc;
 
 use crate::render::mymesh::MyMesh;
+use crate::render::model::{Model, ModelScene};
+use crate::render::scene::Scene;
 
 pub struct PrimitiveCube {
   pub mesh: MyMesh,
@@ -126,5 +131,64 @@ impl PrimitiveTriangle {
     // println!("mesh {:?}", mesh);
     // println!("tex: {:?}", mesh.tex);
     PrimitiveTriangle { mesh }
+  }
+}
+
+pub struct PrimitiveSkyBox {
+  mesh: MyMesh,
+  model: Model,
+}
+
+impl PrimitiveSkyBox {
+  pub fn new(device: &Arc<Device>) -> Self {
+    let faces: [[usize; 3]; 12] = [
+      [0, 1, 2], [2, 3, 0], [1, 5, 6],
+      [6, 2, 1], [5, 4, 7], [7, 6, 5],
+      [4, 0, 3], [3, 7, 4], [3, 2, 6],
+      [6, 7, 3], [4, 5, 1], [1, 0, 4],
+    ];
+
+    let vertices: [[f32; 3]; 8] = [
+      [-0.5, -0.5, -0.5], [0.5, -0.5, -0.5], [0.5, 0.5, -0.5],
+      [-0.5, 0.5, -0.5], [-0.5, -0.5, 0.5], [0.5, -0.5, 0.5],
+      [0.5, 0.5, 0.5], [-0.5, 0.5, 0.5],
+    ];
+
+
+    let vertex: Vec<Point3<f32>> = vertices.iter().map(|v| Point3::new(v[0], v[1], v[2])).collect();
+
+    let triangles: Vec<Triangle<usize>> =
+      faces.iter().map(|f| Triangle::new(f[0], f[1], f[2])).collect();
+
+    let neighbours = Neighbors::new(vertex.clone(), triangles.clone());
+
+    let normals: Vec<Point3<f32>> = (0..vertex.len())
+      .map(|i| neighbours.normal_for_vertex(i, |v| MintVector3::<f32>::from([v.x, v.y, v.z])))
+      .map(|v| Point3::from((-v.x, -v.y, -v.z)))
+      .collect();
+
+    let index: Vec<u32> = faces.iter()
+      .flatten()
+      .cloned()
+      .map(|us| us as u32)
+      .collect();
+
+    let tex = (0..vertex.len())
+      .map(|_i| Point2::new(-1.0, -1.0))
+      .collect();
+
+    let transform = Matrix4::one();
+    let tex_offset = (0..vertex.len()).map(|_i| Point2::new(0, 0)).collect();
+
+    let mesh = MyMesh::new(vertex, tex, tex_offset, normals, index, transform);
+    let model = mesh.get_buffers(&device);
+    PrimitiveSkyBox {
+      mesh,
+      model,
+    }
+  }
+
+  pub fn get_model(&self) -> Vec<ModelScene> {
+    vec![(self.model.clone(), Scene::default())]
   }
 }
