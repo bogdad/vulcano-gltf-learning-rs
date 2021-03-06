@@ -15,8 +15,16 @@
 
 ## how do we create skybox
 
-dont know yet.
-people seem to be creating skyboxes with deferred rendering, but we currently have only a forward pass.
+made an attempt at skyboxing.
+The general idea is:
+have 2 render subpasses, 
+one normal, as before, with vertex and fragrment shader creating geometry and then colors.
+the other stage takes the output of first stage and draws a sky box over it (probably according to depth). Skybox being a large cube surrounding the camera with a "vast landscape" like texture.
+
+Learned how to do stages to a degree.
+![second stage drawing the cube with a first stage as color](./images/10.png)
+
+in this i can recognize the dynamic landcape (the first stage that was before), drawn over a cube (second stage), i think. but learned how to pass attachments between stages, skybox should follow.
 
 ## how do we create sunrise
 

@@ -13,7 +13,7 @@ use crate::render::model::Model;
 use crate::render::scene::Scene;
 use crate::things::terrain_generation;
 
-use crate::fs;
+use crate::shaders::main::fs;
 
 fn xindex(base: f32, step: isize) -> f32 {
   Sky::X * (step as f32) + base

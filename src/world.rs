@@ -40,15 +40,18 @@ pub struct World {
   pub mode: Mode,
   sky: Sky,
   sign_posts: Vec<SignPost>,
+  skybox: PrimitiveSkyBox,
 }
 impl World {
   pub fn new(executor: Executor, graph: &Graph, sign_posts: Vec<SignPost>) -> Self {
     let sky = Sky::new(&graph.device, 0.0, 0.0);
+    let skybox = PrimitiveSkyBox::new(&graph.device);
     World {
       executor,
       mode: Mode::MoveCameraPos,
       sky,
       sign_posts,
+      skybox,
     }
   }
 
@@ -84,6 +87,12 @@ impl World {
     for sign_post in &self.sign_posts {
       res.push((sign_post.get_model().clone(), Default::default()));
     }
+    res
+  }
+
+  pub fn get_models_skybox(&self) -> Vec<ModelScene> {
+    let mut res = vec![];
+    res.extend(self.skybox.get_model());
     res
   }
 }

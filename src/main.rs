@@ -44,8 +44,7 @@ mod utils;
 use executor::Executor;
 use game::Game;
 use render::model::Model;
-use shaders::main::fs;
-use shaders::main::vs;
+use shaders::{main, skybox};
 use utils::{Normal, Vertex};
 
 pub struct Graph {
@@ -55,10 +54,15 @@ pub struct Graph {
   queue: Arc<Queue>,
   swapchain: Arc<Swapchain<Window>>,
   render_pass: Arc<dyn RenderPassAbstract + Send + Sync>,
-  vs: vs::Shader,
-  fs: fs::Shader,
+  vs: main::vs::Shader,
+  fs: main::fs::Shader,
+  skybox_vs: skybox::vs::Shader,
+  skybox_fs: skybox::fs::Shader,
   pipeline: Arc<dyn GraphicsPipelineAbstract + Send + Sync>,
+  pipeline_skybox: Arc<dyn GraphicsPipelineAbstract + Send + Sync>,
   framebuffers: Vec<Arc<dyn FramebufferAbstract + Send + Sync>>,
+  color_buffer: Arc<AttachmentImage>,
+  depth_buffer: Arc<AttachmentImage>,
   draw_text: DrawText,
 }
 
@@ -130,10 +134,10 @@ impl Graph {
     };
 
     let render_pass = Arc::new(
-      vulkano::single_pass_renderpass!(
+      vulkano::ordered_passes_renderpass!(
           device.clone(),
           attachments: {
-              color: {
+              final_color: {
                   load: Clear,
                   store: Store,
                   format: swapchain.format(),
@@ -144,22 +148,44 @@ impl Graph {
                   store: DontCare,
                   format: Format::D16Unorm,
                   samples: 1,
+              },
+              color: {
+                  load: Clear,
+                  store: Store,
+                  format: swapchain.format(),
+                  samples: 1,
+              },
+              depth2: {
+                  load: Clear,
+                  store: DontCare,
+                  format: Format::D16Unorm,
+                  samples: 1,
               }
           },
-          pass: {
+          passes: [
+          {
               color: [color],
-              depth_stencil: {depth}
+              depth_stencil: {depth},
+              input: []
+          },
+          {
+              color: [final_color],
+              depth_stencil: {depth2},
+              input: [color, depth]
           }
+          ]
       )
       .unwrap(),
     );
-    let vs = vs::Shader::load(device.clone()).unwrap();
+    let vs = main::vs::Shader::load(device.clone()).unwrap();
     //let tcs = tcs::Shader::load(device.clone()).unwrap();
     //let tes = tes::Shader::load(device.clone()).unwrap();
-    let fs = fs::Shader::load(device.clone()).unwrap();
+    let fs = main::fs::Shader::load(device.clone()).unwrap();
+    let skybox_vs = skybox::vs::Shader::load(device.clone()).unwrap();
+    let skybox_fs = skybox::fs::Shader::load(device.clone()).unwrap();
 
-    let (pipeline, framebuffers) =
-      window_size_dependent_setup(device.clone(), &vs, &fs, &images, render_pass.clone());
+    let (pipeline, pipeline_skybox, framebuffers, color_buffer, depth_buffer) =
+      window_size_dependent_setup(device.clone(), &vs, &fs, &skybox_vs, &skybox_fs, &images, render_pass.clone());
 
     let draw_text = DrawText::new(device.clone(), queue.clone(), swapchain.clone(), &images);
 
@@ -172,8 +198,13 @@ impl Graph {
       render_pass,
       vs,
       fs,
+      skybox_fs,
+      skybox_vs,
       pipeline,
+      pipeline_skybox,
       framebuffers,
+      color_buffer,
+      depth_buffer,
       draw_text,
     }
   }
@@ -186,15 +217,20 @@ impl Graph {
       Err(e) => panic!("Failed to recreate swapchain: {:?}", e),
     };
     self.swapchain = new_swapchain;
-    let (new_pipeline, new_framebuffers) = window_size_dependent_setup(
+    let (new_pipeline, new_pipeline_skybox, new_framebuffers, new_color_buffer, new_depth_buffer) = window_size_dependent_setup(
       self.device.clone(),
       &self.vs,
       &self.fs,
+      &self.skybox_vs,
+      &self.skybox_fs,
       &new_images,
       self.render_pass.clone(),
     );
     self.pipeline = new_pipeline;
+    self.pipeline_skybox = new_pipeline_skybox;
     self.framebuffers = new_framebuffers;
+    self.color_buffer = new_color_buffer;
+    self.depth_buffer = new_depth_buffer;
 
     self.draw_text = DrawText::new(
       self.device.clone(),
@@ -234,17 +270,32 @@ fn main() {
 
 fn window_size_dependent_setup(
   device: Arc<Device>,
-  vs: &vs::Shader,
-  fs: &fs::Shader,
+  vs: &main::vs::Shader,
+  fs: &main::fs::Shader,
+  skybox_vs: &skybox::vs::Shader,
+  skybox_fs: &skybox::fs::Shader,
   images: &[Arc<SwapchainImage<Window>>],
   render_pass: Arc<dyn RenderPassAbstract + Send + Sync>,
 ) -> (
   Arc<dyn GraphicsPipelineAbstract + Send + Sync>,
+  Arc<dyn GraphicsPipelineAbstract + Send + Sync>,
   Vec<Arc<dyn FramebufferAbstract + Send + Sync>>,
+  Arc<AttachmentImage>,
+  Arc<AttachmentImage>,
 ) {
   let dimensions = images[0].dimensions();
 
   let depth_buffer =
+    AttachmentImage::input_attachment(device.clone(), dimensions, Format::D16Unorm).unwrap();
+
+  let color_buffer = AttachmentImage::input_attachment(
+        device.clone(),
+        dimensions,
+        Format::B8G8R8A8Unorm,
+    )
+    .unwrap();
+
+  let depth_buffer2 =
     AttachmentImage::transient(device.clone(), dimensions, Format::D16Unorm).unwrap();
 
   let framebuffers = images
@@ -255,6 +306,10 @@ fn window_size_dependent_setup(
           .add(image.clone())
           .unwrap()
           .add(depth_buffer.clone())
+          .unwrap()
+          .add(color_buffer.clone())
+          .unwrap()
+          .add(depth_buffer2.clone())
           .unwrap()
           .build()
           .unwrap(),
@@ -280,9 +335,27 @@ fn window_size_dependent_setup(
       .fragment_shader(fs.main_entry_point(), ())
       .depth_stencil_simple_depth()
       .render_pass(Subpass::from(render_pass.clone(), 0).unwrap())
+      .build(device.clone())
+      .unwrap(),
+  );
+
+  let pipeline_skybox = Arc::new(
+    GraphicsPipeline::start()
+      .vertex_input(TwoBuffersDefinition::<Vertex, Normal>::new())
+      .vertex_shader(skybox_vs.main_entry_point(), ())
+      .triangle_list()
+      .viewports_dynamic_scissors_irrelevant(1)
+      .viewports(iter::once(Viewport {
+        origin: [0.0, 0.0],
+        dimensions: [dimensions[0] as f32, dimensions[1] as f32],
+        depth_range: 0.0..1.0,
+      }))
+      .fragment_shader(skybox_fs.main_entry_point(), ())
+      .depth_stencil_simple_depth()
+      .render_pass(Subpass::from(render_pass.clone(), 1).unwrap())
       .build(device)
       .unwrap(),
   );
 
-  (pipeline, framebuffers)
+  (pipeline, pipeline_skybox, framebuffers, color_buffer, depth_buffer)
 }

@@ -5,8 +5,8 @@ use winit::event::{KeyboardInput, VirtualKeyCode};
 
 use std::fmt;
 
-use crate::vs;
 use crate::Graph;
+use crate::shaders::main::vs;
 
 #[derive(Debug)]
 pub struct Camera {
