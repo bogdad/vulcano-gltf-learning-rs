@@ -19,6 +19,13 @@ layout(set = 0, binding = 0) uniform Data {
     mat4 proj;
 } uniforms;
 
+mat4 getViewAtOrigin() {
+    mat4 view = mat4(uniforms.view);
+    view[3][0] = 0;
+    view[3][1] = 0;
+    view[3][2] = 0;
+    return view;
+}
 
 void main() {
     mat4 worldview = uniforms.view * uniforms.world;

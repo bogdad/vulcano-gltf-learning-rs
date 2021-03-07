@@ -94,3 +94,10 @@ What is blender convention:
 
 So, `blender gltf exporter` converts coordinate systems: swaps Y and Z. 
 If you are designing an asset in blender to be viewable in the default camera in gltf (sitting in -Z:`[0, 0, -1]` pointing towards +Z `[0, 0, 1]` pointing up and with +Y`[0, 1, 0]`
+
+# Attributions
+
+Skybox textures:
+https://opengameart.org/content/interstellar-skybox-png
+Skybox inspiration:
+https://github.com/adrien-ben/gltf-viewer-rs/blob/master/src/renderer/skybox.rs

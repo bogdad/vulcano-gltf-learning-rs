@@ -168,7 +168,7 @@ impl PrimitiveSkyBox {
 
     let vertex: Vec<Point3<f32>> = vertices
       .iter()
-      .map(|v| Point3::new(v[0], v[1], v[2]))
+      .map(|v| Point3::new(v[0]*100.0, v[1]*100.0, v[2]*100.0))
       .collect();
 
     let triangles: Vec<Triangle<usize>> = faces
