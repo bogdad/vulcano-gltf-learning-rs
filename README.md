@@ -13,6 +13,10 @@
 - [ ] how do vertex normals work
 - [x] how do coordinate systems work
 
+## how do we create skybox 2
+
+
+
 ## how do we create skybox
 
 made an attempt at skyboxing.

@@ -185,7 +185,15 @@ impl Graph {
     let skybox_fs = skybox::fs::Shader::load(device.clone()).unwrap();
 
     let (pipeline, pipeline_skybox, framebuffers, color_buffer, depth_buffer) =
-      window_size_dependent_setup(device.clone(), &vs, &fs, &skybox_vs, &skybox_fs, &images, render_pass.clone());
+      window_size_dependent_setup(
+        device.clone(),
+        &vs,
+        &fs,
+        &skybox_vs,
+        &skybox_fs,
+        &images,
+        render_pass.clone(),
+      );
 
     let draw_text = DrawText::new(device.clone(), queue.clone(), swapchain.clone(), &images);
 
@@ -217,15 +225,16 @@ impl Graph {
       Err(e) => panic!("Failed to recreate swapchain: {:?}", e),
     };
     self.swapchain = new_swapchain;
-    let (new_pipeline, new_pipeline_skybox, new_framebuffers, new_color_buffer, new_depth_buffer) = window_size_dependent_setup(
-      self.device.clone(),
-      &self.vs,
-      &self.fs,
-      &self.skybox_vs,
-      &self.skybox_fs,
-      &new_images,
-      self.render_pass.clone(),
-    );
+    let (new_pipeline, new_pipeline_skybox, new_framebuffers, new_color_buffer, new_depth_buffer) =
+      window_size_dependent_setup(
+        self.device.clone(),
+        &self.vs,
+        &self.fs,
+        &self.skybox_vs,
+        &self.skybox_fs,
+        &new_images,
+        self.render_pass.clone(),
+      );
     self.pipeline = new_pipeline;
     self.pipeline_skybox = new_pipeline_skybox;
     self.framebuffers = new_framebuffers;
@@ -261,7 +270,7 @@ fn main() {
   let executor = Executor::new(thread_pool);
 
   let mut game = Game::new(executor, graph);
-  game.init();
+
   event_loop.run(move |event, _, mut control_flow| {
     game.tick();
     game.gloop(event, &mut control_flow)
@@ -288,12 +297,8 @@ fn window_size_dependent_setup(
   let depth_buffer =
     AttachmentImage::input_attachment(device.clone(), dimensions, Format::D16Unorm).unwrap();
 
-  let color_buffer = AttachmentImage::input_attachment(
-        device.clone(),
-        dimensions,
-        Format::B8G8R8A8Unorm,
-    )
-    .unwrap();
+  let color_buffer =
+    AttachmentImage::input_attachment(device.clone(), dimensions, Format::B8G8R8A8Unorm).unwrap();
 
   let depth_buffer2 =
     AttachmentImage::transient(device.clone(), dimensions, Format::D16Unorm).unwrap();
@@ -357,5 +362,11 @@ fn window_size_dependent_setup(
       .unwrap(),
   );
 
-  (pipeline, pipeline_skybox, framebuffers, color_buffer, depth_buffer)
+  (
+    pipeline,
+    pipeline_skybox,
+    framebuffers,
+    color_buffer,
+    depth_buffer,
+  )
 }
