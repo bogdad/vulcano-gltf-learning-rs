@@ -150,12 +150,8 @@ fn landscape_gen(
     z / nsize + origin_z,
   );
   let mut value = hetero_terrain_new_perlin(
-    ncoords.0,
-    ncoords.1,
-    ncoords.2,
-    dimension, /*-H*/
-    lacunarity,
-    depth, /* octaves */
+    ncoords.0, ncoords.1, ncoords.2, dimension, /*-H*/
+    lacunarity, depth, /* octaves */
     offset,
   ) * 0.25;
 
