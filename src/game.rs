@@ -100,8 +100,7 @@ impl Game {
 
     let textures = Textures::new(&texts);
 
-    let (system, system_future) =
-      System::new(&graph.device, &graph.queue, graph.dimensions, textures);
+    let (system, system_future) = System::new(&graph, textures);
 
     let previous_frame_end = Some(system_future);
 
@@ -120,6 +119,7 @@ impl Game {
     self.previous_frame_end.as_mut().unwrap().cleanup_finished();
     if self.recreate_swapchain {
       self.graph.recreate_swapchain();
+      self.system.recreate_swapchain(&self.graph);
       self.recreate_swapchain = false;
     }
 
@@ -127,14 +127,8 @@ impl Game {
       self.camera.proj(&self.graph),
       &self.world.get_models(),
       self.camera.pos,
-      &self.graph.pipeline,
     );
-    let set_skybox = self.system.skybox_set(
-      self.camera.proj(&self.graph),
-      &self.graph.pipeline_skybox,
-      &self.graph.color_buffer,
-      &self.graph.depth_buffer,
-    );
+    let set_skybox = self.system.skybox_set(self.camera.proj(&self.graph));
 
     let (image_num, suboptimal, acquire_future) =
       match swapchain::acquire_next_image(self.graph.swapchain.clone(), None) {
@@ -157,7 +151,7 @@ impl Game {
     .unwrap();
     builder
       .begin_render_pass(
-        self.graph.framebuffers[image_num].clone(),
+        self.system.framebuffers[image_num].clone(),
         SubpassContents::Inline,
         vec![
           [0.0, 0.0, 0.0, 1.0].into(),
@@ -168,18 +162,18 @@ impl Game {
       )
       .unwrap();
     for model in &self.models {
-      model.draw_indexed(&mut builder, self.graph.pipeline.clone(), set.clone());
+      model.draw_indexed(&mut builder, self.system.pipeline.clone(), set.clone());
     }
     for model in self.world.get_models() {
       model
         .0
-        .draw_indexed(&mut builder, self.graph.pipeline.clone(), set.clone());
+        .draw_indexed(&mut builder, self.system.pipeline.clone(), set.clone());
     }
     builder.next_subpass(SubpassContents::Inline).unwrap();
     for model in self.world.get_models_skybox() {
       model.0.draw_indexed(
         &mut builder,
-        self.graph.pipeline_skybox.clone(),
+        self.system.pipeline_skybox.clone(),
         set_skybox.clone(),
       );
     }
