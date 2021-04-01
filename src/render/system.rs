@@ -243,10 +243,6 @@ impl System {
         graph.render_pass.clone(),
       );
 
-    let depth_buffer =
-      AttachmentImage::input_attachment(graph.device.clone(), graph.dimensions, Format::D16Unorm)
-        .unwrap();
-
     self.pipeline = pipeline;
     self.pipeline_skybox = pipeline_skybox;
     self.framebuffers = framebuffers;

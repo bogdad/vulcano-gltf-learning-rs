@@ -202,6 +202,7 @@ impl Graph {
       Err(e) => panic!("Failed to recreate swapchain: {:?}", e),
     };
     self.swapchain = new_swapchain;
+    self.images = new_images.clone();
 
     self.draw_text = DrawText::new(
       self.device.clone(),
