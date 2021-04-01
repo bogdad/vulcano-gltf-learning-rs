@@ -8,9 +8,9 @@ use vulkano::sync::GpuFuture;
 use std::sync::Arc;
 
 pub struct SkyboxCubemap {
-  texture: Arc<ImmutableImage<Format>>,
-  sampler: Arc<Sampler>,
-  future: Box<GpuFuture>,
+  pub texture: Arc<ImmutableImage<Format>>,
+  pub sampler: Arc<Sampler>,
+  pub future: Box<GpuFuture>,
 }
 
 impl SkyboxCubemap {

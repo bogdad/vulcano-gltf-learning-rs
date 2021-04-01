@@ -15,7 +15,12 @@
 
 ## how do we create skybox 2
 
+we have some skybox!
+![skybox](./images/11.png)
 
+probably a bug as it needs to look like this:
+![skybox](./assets/interstellar_skybox/xneg.png)
+(by Jockum Skoglund aka hipshot)
 
 ## how do we create skybox
 

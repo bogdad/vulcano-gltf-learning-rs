@@ -225,6 +225,11 @@ impl System {
         .unwrap()
         .add_image(self.depth_buffer.clone())
         .unwrap()
+        .add_sampled_image(
+          self.skybox_cubemap.texture.clone(),
+          self.skybox_cubemap.sampler.clone(),
+        )
+        .unwrap()
         .build()
         .unwrap(),
     );

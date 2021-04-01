@@ -19,6 +19,8 @@ layout(set = 0, binding = 0) uniform Data {
     mat4 proj;
 } uniforms;
 
+layout(location = 0) out vec3 v_position;
+
 mat4 getViewAtOrigin() {
     mat4 view = mat4(uniforms.view);
     view[3][0] = 0;
@@ -30,6 +32,7 @@ mat4 getViewAtOrigin() {
 void main() {
     mat4 worldview = uniforms.view * uniforms.world;
     gl_Position = uniforms.proj * worldview * vec4(position, 1.0);
+    v_position = position;
 }
 "
   }
@@ -43,14 +46,19 @@ pub mod fs {
 #version 450
 #extension GL_ARB_separate_shader_objects : enable
 
+layout(location = 0) in vec3 v_position;
+
 layout (input_attachment_index = 0, set = 0, binding = 1) uniform subpassInput inputColor;
 layout (input_attachment_index = 1, set = 0, binding = 2) uniform subpassInput inputDepth;
+layout (set = 0, binding = 3) uniform samplerCube cubemapSampler;
 
 layout(location = 0) out vec4 outColor;
 
 void main() {
     vec3 color = subpassLoad(inputColor).rgb;
-
+    if (color.rgb[0] == 0 && color.rgb[1] == 0 && color.rgb[2] == 0) {
+      color = texture(cubemapSampler, v_position).rgb;
+    }
     outColor = vec4(color, 1.0);
 }
        ",
