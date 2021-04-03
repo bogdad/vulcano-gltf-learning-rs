@@ -45,6 +45,10 @@ impl Game {
       front: Vector3::new(0.0, 0.0, 1.0),
       up: Vector3::new(0.0, 1.0, 0.0),
       speed: 0.3,
+      last_x: None,
+      last_y: None,
+      yaw: 0.0,
+      pitch: 0.0,
     };
 
     let strs = (-100..100).map(|i| i.to_string()).collect();
@@ -248,6 +252,12 @@ impl Game {
         if camera_moved {
           self.world.camera_entered(&self.camera.pos);
         }
+      }
+      Event::WindowEvent {
+        event: WindowEvent::CursorMoved { position, .. },
+        ..
+      } => {
+        self.camera.react_mouse(&position);
       }
       Event::RedrawEventsCleared => {
         self.draw();

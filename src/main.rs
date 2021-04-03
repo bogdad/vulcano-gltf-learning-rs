@@ -12,6 +12,7 @@ use vulkano::swapchain::{
 use vulkano_text::DrawText;
 use vulkano_win::VkSurfaceBuild;
 
+use winit::dpi::PhysicalSize;
 use winit::event_loop::EventLoop;
 use winit::window::{Window, WindowBuilder};
 
@@ -41,7 +42,6 @@ use executor::Executor;
 use game::Game;
 use render::model::Model;
 use shaders::{main, skybox};
-use utils::{Normal, Vertex};
 
 pub struct Graph {
   surface: Arc<Surface<Window>>,
@@ -76,6 +76,7 @@ impl Graph {
     };
 
     let surface = WindowBuilder::new()
+      .with_inner_size(PhysicalSize::new(2400.0, 1600.0))
       .build_vk_surface(&event_loop, instance.clone())
       .unwrap();
     let dimensions: [u32; 2] = surface.window().inner_size().into();

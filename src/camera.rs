@@ -1,6 +1,7 @@
 use crate::world::Mode;
-use cgmath::{EuclideanSpace, InnerSpace, Matrix3, Matrix4, Point3, Rad, Vector3};
+use cgmath::{Angle, EuclideanSpace, InnerSpace, Matrix3, Matrix4, Point3, Rad, Vector3};
 
+use winit::dpi::PhysicalPosition;
 use winit::event::{KeyboardInput, VirtualKeyCode};
 
 use std::fmt;
@@ -17,7 +18,12 @@ pub struct Camera {
   // up is there
   pub up: Vector3<f32>,
   pub speed: f32,
+  pub last_x: Option<f64>,
+  pub last_y: Option<f64>,
+  pub yaw: f32,
+  pub pitch: f32,
 }
+
 impl Camera {
   fn adjust(&mut self, mode: Mode, by: Vector3<f32>) {
     match mode {
@@ -25,6 +31,34 @@ impl Camera {
       Mode::MoveCameraFront => self.front += by,
       Mode::MoveCameraUp => self.up += by,
     }
+  }
+
+  pub fn react_mouse(&mut self, position: &PhysicalPosition<f64>) {
+    if let Some(lx) = self.last_x {
+      if let Some(ly) = self.last_y {
+        let mut xoffset: f32 = (position.x - lx) as f32;
+        let mut yoffset: f32 = (ly - position.y) as f32; // reversed since y-coordinates range from bottom to top
+        let sensitivity = 0.1;
+        xoffset *= sensitivity;
+        yoffset *= sensitivity;
+        self.yaw += xoffset;
+        self.pitch += yoffset;
+        if self.pitch > 89.0 {
+          self.pitch = 89.0;
+        }
+        if self.pitch < -89.0 {
+          self.pitch = -89.0;
+        }
+        let direction = Vector3::new(
+          Rad(self.yaw).cos() * Rad(self.pitch).cos(),
+          Rad(self.pitch).sin(),
+          Rad(self.yaw).sin() * Rad(self.pitch).cos(),
+        );
+        self.front = direction.normalize();
+      }
+    }
+    self.last_x = Some(position.x);
+    self.last_y = Some(position.y);
   }
 
   pub fn react(self: &mut Camera, mode: Mode, input: &KeyboardInput) -> bool {

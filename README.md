@@ -4,14 +4,25 @@
 ## Questions:
 
 
-
+- [x] how do we mouse look
 - [ ] how do we create sunrise
-- [ ] how do we create skybox
+- [ ] how do we create skybox 2
+- [x] how do we create skybox
 - [x] how do we plop the light-sources
 - [x] how do we write text on things in 3d
 - [x] how do we generate random "cloud like landcapes" on the fly
 - [ ] how do vertex normals work
 - [x] how do coordinate systems work
+
+## how do we debug sky box
+
+??
+
+## how do we mouse look
+
+to debug skybox seems its very cool to have mouse look,
+now we have one!
+![mouse look](./images/12.png)
 
 ## how do we create skybox 2
 
