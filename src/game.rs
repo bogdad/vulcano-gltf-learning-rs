@@ -261,17 +261,12 @@ impl Game {
           self.world.camera_entered(&self.camera.pos);
         }
         if let KeyboardInput {
-          virtual_keycode: Some(key_code),
+          virtual_keycode: Some(VirtualKeyCode::Q),
           ..
         } = input
         {
-          match key_code {
-            VirtualKeyCode::Q => {
-              if self.cmd_pressed {
-                *control_flow = ControlFlow::Exit;
-              }
-            }
-            _ => (),
+          if self.cmd_pressed {
+            *control_flow = ControlFlow::Exit;
           }
         }
       }

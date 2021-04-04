@@ -189,8 +189,8 @@ impl Graph {
       render_pass,
       vs,
       fs,
-      skybox_fs,
       skybox_vs,
+      skybox_fs,
       draw_text,
     }
   }

@@ -121,7 +121,7 @@ impl System {
   pub fn main_set(
     &self,
     proj: shaders::main::vs::ty::Data,
-    models: &Vec<ModelScene>,
+    models: &[ModelScene],
     camera_position: Point3<f32>,
   ) -> Arc<dyn DescriptorSet + Sync + Send> {
     let uniform_buffer_subbuffer = {
@@ -194,7 +194,7 @@ impl System {
 
     let layout = self.pipeline.descriptor_set_layout(0).unwrap();
 
-    let set = Arc::new(
+    Arc::new(
       PersistentDescriptorSet::start(layout.clone())
         .add_buffer(uniform_buffer_subbuffer)
         .unwrap()
@@ -210,8 +210,7 @@ impl System {
         .unwrap()
         .build()
         .unwrap(),
-    );
-    set
+    )
   }
 
   pub fn skybox_set(
@@ -223,7 +222,7 @@ impl System {
       let uniform_data = proj;
       self.uniform_skybox_buffer.next(uniform_data).unwrap()
     };
-    let set = Arc::new(
+    Arc::new(
       PersistentDescriptorSet::start(layout.clone())
         .add_buffer(uniform_buffer_subbuffer)
         .unwrap()
@@ -238,8 +237,7 @@ impl System {
         .unwrap()
         .build()
         .unwrap(),
-    );
-    set
+    )
   }
 
   pub fn recreate_swapchain(&mut self, graph: &Graph) {
