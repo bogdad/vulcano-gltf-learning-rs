@@ -10,11 +10,10 @@ use std::sync::Arc;
 pub struct SkyboxCubemap {
   pub texture: Arc<ImmutableImage<Format>>,
   pub sampler: Arc<Sampler>,
-  pub future: Box<GpuFuture>,
 }
 
 impl SkyboxCubemap {
-  pub fn new(queue: &Arc<Queue>) -> Self {
+  pub fn new(queue: &Arc<Queue>) -> (Self, Box<dyn GpuFuture>) {
     let img_negx = image::load_from_memory_with_format(
       include_bytes!("../../assets/interstellar_skybox/xneg.png"),
       ImageFormat::Png,
@@ -62,7 +61,7 @@ impl SkyboxCubemap {
     let (texture, future) = {
       ImmutableImage::from_iter(
         image_data.iter().cloned(),
-        Dimensions::Cubemap { size: 512 },
+        Dimensions::Cubemap { size: 1024 },
         MipmapsCount::Specific(6),
         Format::R8G8B8A8Srgb,
         queue.clone(),
@@ -75,9 +74,9 @@ impl SkyboxCubemap {
       Filter::Linear,
       Filter::Linear,
       MipmapMode::Nearest,
-      SamplerAddressMode::Repeat,
-      SamplerAddressMode::Repeat,
-      SamplerAddressMode::Repeat,
+      SamplerAddressMode::ClampToEdge,
+      SamplerAddressMode::ClampToEdge,
+      SamplerAddressMode::ClampToEdge,
       0.0,
       1.0,
       0.0,
@@ -85,10 +84,9 @@ impl SkyboxCubemap {
     )
     .unwrap();
 
-    SkyboxCubemap {
+    (SkyboxCubemap {
       texture,
       sampler,
-      future: future.boxed(),
-    }
+    }, future.boxed())
   }
 }

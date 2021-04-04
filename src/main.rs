@@ -138,7 +138,7 @@ impl Graph {
               },
               depth: {
                   load: Clear,
-                  store: DontCare,
+                  store: Store,
                   format: Format::D16Unorm,
                   samples: 1,
               },

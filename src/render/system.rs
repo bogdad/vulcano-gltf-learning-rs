@@ -1,17 +1,18 @@
+use vulkano::pipeline::depth_stencil::{Compare, DepthStencil};
 use vulkano::buffer::cpu_pool::CpuBufferPool;
 use vulkano::buffer::BufferUsage;
 use vulkano::descriptor::descriptor_set::{DescriptorSet, PersistentDescriptorSet};
-use vulkano::device::{Device, Queue};
+use vulkano::device::{Device};
 use vulkano::format::Format;
 use vulkano::framebuffer::{Framebuffer, FramebufferAbstract, RenderPassAbstract, Subpass};
-use vulkano::image::{AttachmentImage, ImageUsage, ImmutableImage, SwapchainImage};
+use vulkano::image::{AttachmentImage, ImmutableImage, SwapchainImage};
 use vulkano::pipeline::vertex::TwoBuffersDefinition;
 use vulkano::pipeline::viewport::Viewport;
 use vulkano::pipeline::{GraphicsPipeline, GraphicsPipelineAbstract};
 use vulkano::sampler::{Filter, MipmapMode, Sampler, SamplerAddressMode};
 use vulkano::sync::GpuFuture;
 
-use cgmath::{EuclideanSpace, InnerSpace, Matrix3, Matrix4, Point3, Rad, Vector3};
+use cgmath::{Point3};
 
 use winit::window::Window;
 
@@ -61,7 +62,7 @@ impl System {
       1.0,
     )
     .unwrap();
-    let skybox_cubemap = SkyboxCubemap::new(&graph.queue);
+    let (skybox_cubemap, skybox_future) = SkyboxCubemap::new(&graph.queue);
 
     let (pipeline, pipeline_skybox, framebuffers, color_buffer, depth_buffer) =
       window_size_dependent_setup(
@@ -114,7 +115,7 @@ impl System {
         color_buffer,
         depth_buffer,
       },
-      text_future,
+      text_future.join(skybox_future).boxed(),
     )
   }
 
@@ -330,6 +331,9 @@ fn window_size_dependent_setup(
       .unwrap(),
   );
 
+  let mut depth_stencil = DepthStencil::simple_depth_test();
+  depth_stencil.depth_compare = Compare::LessOrEqual;
+
   let pipeline_skybox = Arc::new(
     GraphicsPipeline::start()
       .vertex_input(TwoBuffersDefinition::<Vertex, Normal>::new())
@@ -342,7 +346,7 @@ fn window_size_dependent_setup(
         depth_range: 0.0..1.0,
       }))
       .fragment_shader(skybox_fs.main_entry_point(), ())
-      .depth_stencil_simple_depth()
+      .depth_stencil(depth_stencil)
       .render_pass(Subpass::from(render_pass.clone(), 1).unwrap())
       .build(device)
       .unwrap(),

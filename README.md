@@ -3,10 +3,10 @@
 
 ## Questions:
 
-
+- [x] how do we debug skybox
 - [x] how do we mouse look
 - [ ] how do we create sunrise
-- [ ] how do we create skybox 2
+- [x] how do we create skybox 2
 - [x] how do we create skybox
 - [x] how do we plop the light-sources
 - [x] how do we write text on things in 3d
@@ -16,7 +16,15 @@
 
 ## how do we debug sky box
 
-??
+and the last problem was 512 size of skybox texture vs. real 1024.
+
+![skybox](./images/14.png)
+
+before that the problem was that we did not wait for the skybox texture future, and as soon as we wait - we get skybox!
+
+![skybox](./images/13.png)
+
+still looks buggy, but cool.
 
 ## how do we mouse look
 

@@ -34,9 +34,10 @@ mat4 getViewAtOrigin() {
 
 void main() {
     mat4 view = getViewAtOrigin();
-    gl_Position = uniforms.proj * view * vec4(position, 1.0);
+    vec4 pos = uniforms.proj * view * vec4(position, 1.0);
+    gl_Position = pos;
     v_position = position;
-    v_position2 = gl_Position.xyz;
+    v_position2 = pos.xyz;
     v_camera_position = uniforms.camera_position;
 }
 "
@@ -65,7 +66,7 @@ layout(location = 0) out vec4 outColor;
 void main() {
     vec3 color = subpassLoad(inputColor).rgb;
     if (color.rgb[0] == 0 && color.rgb[1] == 0 && color.rgb[2] == 0) {
-      vec3 direction = normalize(v_camera_position);
+      vec3 direction = normalize(-v_position);
       outColor = texture(cubemapSampler, direction);
     } else {
       outColor = vec4(color, 1.0);
