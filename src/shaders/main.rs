@@ -1,6 +1,7 @@
 pub mod vs {
   vulkano_shaders::shader! {
       ty: "vertex",
+      include: [ "src/shaders/"],
       src: "
 #version 450
 
@@ -15,12 +16,11 @@ layout(location = 2) out vec2 v_tex_offset;
 layout(location = 3) out vec3 v_position;
 
 layout(set = 0, binding = 0) uniform Data {
-    mat4 world;
+      mat4 world;
     mat4 view;
     mat4 proj;
+    vec3 camera_position;
 } uniforms;
-
-
 
 void main() {
     mat4 worldview = uniforms.view * uniforms.world;
@@ -38,6 +38,7 @@ void main() {
 pub mod fs {
   vulkano_shaders::shader! {
       ty: "fragment",
+      include: [ "src/shaders/"],
       src: "
 #version 450
 

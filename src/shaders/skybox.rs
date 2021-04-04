@@ -17,10 +17,12 @@ layout(set = 0, binding = 0) uniform Data {
     mat4 world;
     mat4 view;
     mat4 proj;
+    vec3 camera_position;
 } uniforms;
 
 layout(location = 0) out vec3 v_position;
 layout(location = 1) out vec3 v_position2;
+layout(location = 2) out vec3 v_camera_position;
 
 mat4 getViewAtOrigin() {
     mat4 view = mat4(uniforms.view);
@@ -35,6 +37,7 @@ void main() {
     gl_Position = uniforms.proj * view * vec4(position, 1.0);
     v_position = position;
     v_position2 = gl_Position.xyz;
+    v_camera_position = uniforms.camera_position;
 }
 "
   }
@@ -50,19 +53,23 @@ pub mod fs {
 
 layout(location = 0) in vec3 v_position;
 layout(location = 1) in vec3 v_position2;
+layout(location = 2) in vec3 v_camera_position;
 
 layout (input_attachment_index = 0, set = 0, binding = 1) uniform subpassInput inputColor;
 layout (input_attachment_index = 1, set = 0, binding = 2) uniform subpassInput inputDepth;
 layout (set = 0, binding = 3) uniform samplerCube cubemapSampler;
+
 
 layout(location = 0) out vec4 outColor;
 
 void main() {
     vec3 color = subpassLoad(inputColor).rgb;
     if (color.rgb[0] == 0 && color.rgb[1] == 0 && color.rgb[2] == 0) {
-      color = texture(cubemapSampler, v_position - v_position2).rgb;
+      vec3 direction = normalize(v_camera_position);
+      outColor = texture(cubemapSampler, direction);
+    } else {
+      outColor = vec4(color, 1.0);
     }
-    outColor = vec4(color, 1.0);
 }
        ",
        types_meta: {

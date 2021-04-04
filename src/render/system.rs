@@ -35,6 +35,7 @@ pub struct System {
   pub pipeline_skybox: Arc<dyn GraphicsPipelineAbstract + Send + Sync>,
   pub framebuffers: Vec<Arc<dyn FramebufferAbstract + Send + Sync>>,
   uniform_buffer: CpuBufferPool<shaders::main::vs::ty::Data>,
+  uniform_skybox_buffer: CpuBufferPool<shaders::skybox::vs::ty::Data>,
   environment_buffer: CpuBufferPool<shaders::main::fs::ty::Environment>,
   point_lights_buffer: CpuBufferPool<shaders::main::fs::ty::PointLights>,
   directional_lights_buffer: CpuBufferPool<shaders::main::fs::ty::DirectionalLights>,
@@ -75,6 +76,10 @@ impl System {
 
     let uniform_buffer =
       CpuBufferPool::<shaders::main::vs::ty::Data>::new(graph.device.clone(), BufferUsage::all());
+    let uniform_skybox_buffer =
+      CpuBufferPool::<shaders::skybox::vs::ty::Data>::new(graph.device.clone(), BufferUsage::all());
+
+
     let environment_buffer = CpuBufferPool::<shaders::main::fs::ty::Environment>::new(
       graph.device.clone(),
       BufferUsage::all(),
@@ -101,6 +106,7 @@ impl System {
         pipeline_skybox,
         framebuffers,
         uniform_buffer,
+        uniform_skybox_buffer,
         environment_buffer,
         point_lights_buffer,
         directional_lights_buffer,
@@ -210,12 +216,12 @@ impl System {
 
   pub fn skybox_set(
     &self,
-    proj: shaders::main::vs::ty::Data,
+    proj: shaders::skybox::vs::ty::Data,
   ) -> Arc<dyn DescriptorSet + Sync + Send> {
     let layout = self.pipeline_skybox.descriptor_set_layout(0).unwrap();
     let uniform_buffer_subbuffer = {
       let uniform_data = proj;
-      self.uniform_buffer.next(uniform_data).unwrap()
+      self.uniform_skybox_buffer.next(uniform_data).unwrap()
     };
     let set = Arc::new(
       PersistentDescriptorSet::start(layout.clone())

@@ -6,7 +6,7 @@ use winit::event::{KeyboardInput, VirtualKeyCode};
 
 use std::fmt;
 
-use crate::shaders::main::vs;
+use crate::shaders;
 use crate::Graph;
 
 #[derive(Debug)]
@@ -94,7 +94,7 @@ impl Camera {
     false
   }
 
-  pub fn proj(&self, graph: &Graph) -> vs::ty::Data {
+  pub fn proj(&self, graph: &Graph) -> shaders::main::vs::ty::Data {
     //let _elapsed = self.rotation_start.elapsed();
     let rotation = 0;
     //elapsed.as_secs() as f64 + elapsed.subsec_nanos() as f64 / 1_000_000_000.0;
@@ -117,12 +117,46 @@ impl Camera {
        v_normal = transpose(inverse(mat3(worldview))) * normal;
        gl_Position = uniforms.proj * worldview * vec4(position, 1.0);
     */
-    vs::ty::Data {
+    shaders::main::vs::ty::Data {
       //world: Matrix4::from(eye).into(),
       world: Matrix4::from(rotation).into(),
       //world: <Matrix4<f32> as One>::one().into(),
       view: (view * scale).into(),
       proj: proj.into(),
+      camera_position: self.pos.into(),
+    }
+  }
+
+  pub fn proj_skybox(&self, graph: &Graph) -> shaders::skybox::vs::ty::Data {
+    //let _elapsed = self.rotation_start.elapsed();
+    let rotation = 0;
+    //elapsed.as_secs() as f64 + elapsed.subsec_nanos() as f64 / 1_000_000_000.0;
+    let rotation = Matrix3::from_angle_y(Rad(rotation as f32));
+
+    // note: this teapot was meant for OpenGL where the origin is at the lower left
+    //       instead the origin is at the upper left in, Vulkan, so we reverse the Y axis
+    let aspect_ratio = graph.dimensions[0] as f32 / graph.dimensions[1] as f32;
+    let mut proj = cgmath::perspective(Rad(std::f32::consts::FRAC_PI_2), aspect_ratio, 0.1, 100.0);
+
+    // flipping the "horizontal" projection bit
+    proj[0][0] = -proj[0][0];
+
+    let target = self.pos.to_vec() + self.front;
+
+    let view = Matrix4::look_at(self.pos, Point3::from_vec(target), self.up);
+    let scale = Matrix4::from_scale(0.99);
+    /*
+       mat4 worldview = uniforms.view * uniforms.world;
+       v_normal = transpose(inverse(mat3(worldview))) * normal;
+       gl_Position = uniforms.proj * worldview * vec4(position, 1.0);
+    */
+    shaders::skybox::vs::ty::Data {
+      //world: Matrix4::from(eye).into(),
+      world: Matrix4::from(rotation).into(),
+      //world: <Matrix4<f32> as One>::one().into(),
+      view: (view * scale).into(),
+      proj: proj.into(),
+      camera_position: self.pos.into(),
     }
   }
 }

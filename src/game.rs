@@ -134,7 +134,7 @@ impl Game {
       &self.world.get_models(),
       self.camera.pos,
     );
-    let set_skybox = self.system.skybox_set(self.camera.proj(&self.graph));
+    let set_skybox = self.system.skybox_set(self.camera.proj_skybox(&self.graph));
 
     let (image_num, suboptimal, acquire_future) =
       match swapchain::acquire_next_image(self.graph.swapchain.clone(), None) {
