@@ -1,18 +1,18 @@
-use vulkano::pipeline::depth_stencil::{Compare, DepthStencil};
 use vulkano::buffer::cpu_pool::CpuBufferPool;
 use vulkano::buffer::BufferUsage;
 use vulkano::descriptor::descriptor_set::{DescriptorSet, PersistentDescriptorSet};
-use vulkano::device::{Device};
+use vulkano::device::Device;
 use vulkano::format::Format;
 use vulkano::framebuffer::{Framebuffer, FramebufferAbstract, RenderPassAbstract, Subpass};
 use vulkano::image::{AttachmentImage, ImmutableImage, SwapchainImage};
+use vulkano::pipeline::depth_stencil::{Compare, DepthStencil};
 use vulkano::pipeline::vertex::TwoBuffersDefinition;
 use vulkano::pipeline::viewport::Viewport;
 use vulkano::pipeline::{GraphicsPipeline, GraphicsPipelineAbstract};
 use vulkano::sampler::{Filter, MipmapMode, Sampler, SamplerAddressMode};
 use vulkano::sync::GpuFuture;
 
-use cgmath::{Point3};
+use cgmath::Point3;
 
 use winit::window::Window;
 
@@ -79,7 +79,6 @@ impl System {
       CpuBufferPool::<shaders::main::vs::ty::Data>::new(graph.device.clone(), BufferUsage::all());
     let uniform_skybox_buffer =
       CpuBufferPool::<shaders::skybox::vs::ty::Data>::new(graph.device.clone(), BufferUsage::all());
-
 
     let environment_buffer = CpuBufferPool::<shaders::main::fs::ty::Environment>::new(
       graph.device.clone(),

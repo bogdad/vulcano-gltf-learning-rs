@@ -84,9 +84,6 @@ impl SkyboxCubemap {
     )
     .unwrap();
 
-    (SkyboxCubemap {
-      texture,
-      sampler,
-    }, future.boxed())
+    (SkyboxCubemap { texture, sampler }, future.boxed())
   }
 }

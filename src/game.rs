@@ -5,7 +5,7 @@ use vulkano::swapchain::AcquireError;
 use vulkano::sync;
 use vulkano::sync::{FlushError, GpuFuture};
 use vulkano_text::DrawTextTrait;
-use winit::event::{Event, WindowEvent, KeyboardInput, VirtualKeyCode};
+use winit::event::{Event, KeyboardInput, VirtualKeyCode, WindowEvent};
 use winit::event_loop::ControlFlow;
 
 use std::boxed::Box;
@@ -52,11 +52,11 @@ impl Game {
       pitch: 0.0,
     };
 
-    let strs = (-100..100).map(|i| i.to_string()).collect();
+    let strs = (-200..200).map(|i| i.to_string()).collect();
     let texts = Texts::build(strs);
 
     let mut sign_posts = vec![];
-    for i in -100..100 {
+    for i in -200..200 {
       sign_posts.push(SignPost::new(
         &graph.device,
         Point3::new(i as f32, -2.0, 0.0),
@@ -65,7 +65,7 @@ impl Game {
       ));
     }
 
-    for i in -100..100 {
+    for i in -200..200 {
       sign_posts.push(SignPost::new(
         &graph.device,
         Point3::new(-2.0, i as f32, 0.0),
@@ -74,7 +74,7 @@ impl Game {
       ));
     }
 
-    for i in -100..100 {
+    for i in -200..200 {
       sign_posts.push(SignPost::new(
         &graph.device,
         Point3::new(-2.0, -2.0, i as f32),
@@ -263,14 +263,15 @@ impl Game {
         if let KeyboardInput {
           virtual_keycode: Some(key_code),
           ..
-        } = input {
+        } = input
+        {
           match key_code {
             VirtualKeyCode::Q => {
               if self.cmd_pressed {
                 *control_flow = ControlFlow::Exit;
               }
-            },
-            _ => ()
+            }
+            _ => (),
           }
         }
       }

@@ -136,7 +136,12 @@ impl Camera {
     // note: this teapot was meant for OpenGL where the origin is at the lower left
     //       instead the origin is at the upper left in, Vulkan, so we reverse the Y axis
     let aspect_ratio = graph.dimensions[0] as f32 / graph.dimensions[1] as f32;
-    let mut proj = cgmath::perspective(Rad(std::f32::consts::FRAC_PI_2), aspect_ratio, 0.001, 100000.0);
+    let mut proj = cgmath::perspective(
+      Rad(std::f32::consts::FRAC_PI_2),
+      aspect_ratio,
+      0.001,
+      100000.0,
+    );
 
     // flipping the "horizontal" projection bit
     proj[0][0] = -proj[0][0];
