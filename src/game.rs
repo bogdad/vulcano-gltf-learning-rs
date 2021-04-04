@@ -5,7 +5,7 @@ use vulkano::swapchain::AcquireError;
 use vulkano::sync;
 use vulkano::sync::{FlushError, GpuFuture};
 use vulkano_text::DrawTextTrait;
-use winit::event::{Event, WindowEvent};
+use winit::event::{Event, WindowEvent, KeyboardInput, VirtualKeyCode};
 use winit::event_loop::ControlFlow;
 
 use std::boxed::Box;
@@ -29,6 +29,7 @@ pub struct Game {
   models: Vec<Model>,
   previous_frame_end: Option<Box<dyn GpuFuture>>,
   system: System,
+  cmd_pressed: bool,
 }
 
 impl Game {
@@ -116,6 +117,7 @@ impl Game {
       models,
       system,
       previous_frame_end,
+      cmd_pressed: false,
     }
   }
 
@@ -232,6 +234,12 @@ impl Game {
   pub fn gloop(&mut self, event: Event<()>, control_flow: &mut ControlFlow) {
     match event {
       Event::WindowEvent {
+        event: WindowEvent::ModifiersChanged(modifiers),
+        ..
+      } => {
+        self.cmd_pressed = modifiers.logo();
+      }
+      Event::WindowEvent {
         event: WindowEvent::CloseRequested,
         ..
       } => {
@@ -251,6 +259,19 @@ impl Game {
         let camera_moved = self.camera.react(self.world.mode, &input);
         if camera_moved {
           self.world.camera_entered(&self.camera.pos);
+        }
+        if let KeyboardInput {
+          virtual_keycode: Some(key_code),
+          ..
+        } = input {
+          match key_code {
+            VirtualKeyCode::Q => {
+              if self.cmd_pressed {
+                *control_flow = ControlFlow::Exit;
+              }
+            },
+            _ => ()
+          }
         }
       }
       Event::WindowEvent {
