@@ -20,7 +20,6 @@ impl Image {
         .glyph_id(chr)
         .with_scale_and_position(24.0, point(0.0, 0.0));
       let outline_glyph = font.outline_glyph(glyph).unwrap();
-      //println!("yyyyyyyyyy {:?}", q.px_bounds());
       x += outline_glyph.px_bounds().max.x - outline_glyph.px_bounds().min.x;
       if y <= outline_glyph.px_bounds().max.y - outline_glyph.px_bounds().min.y {
         y = outline_glyph.px_bounds().max.y - outline_glyph.px_bounds().min.y;
@@ -28,7 +27,6 @@ impl Image {
     }
     let w = x as u32;
     let h = y as u32;
-    //println!("xxxxxxxxxx {} {}", w, h);
     let mut image = RgbImage::new(w, h);
     x = 0.0;
     for chr in text.chars() {
@@ -36,10 +34,8 @@ impl Image {
         .glyph_id(chr)
         .with_scale_and_position(24.0, point(0.0, 0.0));
       let outline_glyph = font.outline_glyph(glyph).unwrap();
-      outline_glyph.draw(|xx, yy, c| {
-        //println!("zzzzzzzzzz {:?}", (xx, yy, c));
-        image.put_pixel(x as u32 + xx, yy, Rgb([(255.0 * c) as u8, 0, 0]))
-      });
+      outline_glyph
+        .draw(|xx, yy, c| image.put_pixel(x as u32 + xx, yy, Rgb([(255.0 * c) as u8, 0, 0])));
       x += outline_glyph.px_bounds().max.x - outline_glyph.px_bounds().min.x;
     }
 

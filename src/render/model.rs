@@ -54,7 +54,7 @@ impl Model {
       .unwrap();
   }
 
-  pub fn _from_gltf(path: &Path, device: &Arc<Device>) -> Model {
+  pub fn from_gltf(path: &Path, device: &Arc<Device>) -> Model {
     MyMesh::from_gltf(path).get_buffers(device)
   }
 }

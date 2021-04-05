@@ -9,6 +9,7 @@ use winit::event::{Event, KeyboardInput, VirtualKeyCode, WindowEvent};
 use winit::event_loop::ControlFlow;
 
 use std::boxed::Box;
+use std::path::Path;
 
 use crate::camera::Camera;
 use crate::executor::Executor;
@@ -92,7 +93,7 @@ impl Game {
       //Model::from_gltf(Path::new("models/creature2.glb"), &device),
       //Model::from_gltf(Path::new("models/creature3.glb"), &device),
       //Model::from_gltf(Path::new("models/landscape.glb"), &graph.device),
-      //Model::from_gltf(Path::new("models/dog.glb"), &graph.device),
+      Model::from_gltf(Path::new("models/dog.glb"), &graph.device),
       //Model::from_gltf(Path::new("models/box.glb"), &device),
       //Model::from_gltf(Path::new("models/center.glb"), &device),
       PrimitiveCube::new(2.0, 4.0, 8.0, (-8.0, 0.0, 0.0))

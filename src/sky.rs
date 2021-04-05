@@ -149,7 +149,6 @@ pub struct Sky {
   z: Vector2<f32>,
   // last seen camera position
   c: Vector2<f32>,
-  prev_was_half: bool,
   ordered_cells: Vec<(isize, isize)>,
 }
 
@@ -198,7 +197,6 @@ impl Sky {
       x: Vector2::new(x, x + Sky::X),
       z: Vector2::new(z, z + Sky::Z),
       c: Vector2::new(0.0, 0.0),
-      prev_was_half: false,
       ordered_cells: ordered,
     }
   }
@@ -221,8 +219,6 @@ impl Sky {
           self.cache[tii(try_cell)].spawn_region(executor, &self.device, xx, zz);
         }
       }
-    } else {
-      self.prev_was_half = false;
     }
     if indices != (0, 0) {
       //println!("indices {:?} x {:?} z {:?} c {:?}",
