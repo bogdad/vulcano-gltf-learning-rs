@@ -43,18 +43,7 @@ impl Camera {
         yoffset *= sensitivity;
         self.yaw += xoffset;
         self.pitch += yoffset;
-        if self.pitch > 89.0 {
-          self.pitch = 89.0;
-        }
-        if self.pitch < -89.0 {
-          self.pitch = -89.0;
-        }
-        let direction = Vector3::new(
-          Rad(self.yaw).cos() * Rad(self.pitch).cos(),
-          Rad(self.pitch).sin(),
-          Rad(self.yaw).sin() * Rad(self.pitch).cos(),
-        );
-        self.front = direction.normalize();
+        self.calc_direction();
       }
     }
     self.last_x = Some(position.x);
@@ -84,6 +73,26 @@ impl Camera {
         }
         VirtualKeyCode::S => {
           self.adjust(mode, -camera_speed * self.front);
+          return true;
+        }
+        VirtualKeyCode::Q => {
+          self.yaw -= camera_speed;
+          self.calc_direction();
+          return true;
+        }
+        VirtualKeyCode::E => {
+          self.yaw += camera_speed;
+          self.calc_direction();
+          return true;
+        }
+        VirtualKeyCode::Z => {
+          self.pitch -= camera_speed;
+          self.calc_direction();
+          return true;
+        }
+        VirtualKeyCode::C => {
+          self.pitch += camera_speed;
+          self.calc_direction();
           return true;
         }
         _ => {
@@ -163,6 +172,21 @@ impl Camera {
       proj: proj.into(),
       camera_position: self.pos.into(),
     }
+  }
+
+  fn calc_direction(&mut self) {
+    /*if self.pitch > 89.0 {
+      self.pitch = 89.0;
+    }
+    if self.pitch < -89.0 {
+      self.pitch = -89.0;
+    }*/
+    let direction = Vector3::new(
+      Rad(self.yaw).cos() * Rad(self.pitch).cos(),
+      Rad(self.pitch).sin(),
+      Rad(self.yaw).sin() * Rad(self.pitch).cos(),
+    );
+    self.front = direction.normalize();
   }
 }
 
