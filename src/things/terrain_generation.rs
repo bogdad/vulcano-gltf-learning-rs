@@ -346,7 +346,7 @@ fn grid_gen(sub_division: i32, mesh_size: i32) -> (Vec<Vertex>, Vec<Face>) {
       let heightoffset = 0.0;
       let sealevel = -1.0;
       let platlevel = 1.0;
-      let z = landscape_gen(
+      let mut z = landscape_gen(
         x,
         y,
         0.0,
@@ -361,6 +361,10 @@ fn grid_gen(sub_division: i32, mesh_size: i32) -> (Vec<Vertex>, Vec<Face>) {
         sealevel,
         platlevel,
       );
+      if (row_x == 0) || (row_x == sub_division - 1) || (row_y == 0) || (row_y == sub_division - 1)
+      {
+        z = 0.0;
+      }
       edgeloop_cur.push(verts.len() as u32);
       verts.push(Vertex {
         position: (x, y, z),

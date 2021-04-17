@@ -17,6 +17,12 @@
 - [ ] how do vertex normals work
 - [x] how do coordinate systems work
 
+## how do we make clouds seamless
+
+As a first approximation we make Z for clouds equal to 0.0 on the borders of the squares. does not look very good.
+
+![squares zero at the border](./images/15.png)
+
 ## how do we debug sky box
 
 and the last problem was 512 size of skybox texture vs. real 1024.
