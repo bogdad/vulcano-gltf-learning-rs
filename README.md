@@ -3,6 +3,9 @@
 
 ## Questions:
 
+- [ ] how do we make terrain under the clouds
+- [ ] how do we make clouds transparent
+- [ ] how do we make clouds seamless
 - [x] how do we debug skybox
 - [x] how do we mouse look
 - [ ] how do we create sunrise
