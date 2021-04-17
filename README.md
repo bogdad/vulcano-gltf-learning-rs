@@ -5,7 +5,7 @@
 
 - [ ] how do we make terrain under the clouds
 - [ ] how do we make clouds transparent
-- [ ] how do we make clouds seamless
+- [x] how do we make clouds seamless
 - [x] how do we debug skybox
 - [x] how do we mouse look
 - [ ] how do we create sunrise
@@ -16,6 +16,12 @@
 - [x] how do we generate random "cloud like landcapes" on the fly
 - [ ] how do vertex normals work
 - [x] how do coordinate systems work
+
+## how do we make clouds seamless 2
+
+The proper thing to do would be when generating next cloud rectangle - pass in references to neighbours so we could make sure neighbour left border for example is equal to our right border.
+
+![squares equal at the border](./images/16.png)
 
 ## how do we make clouds seamless
 

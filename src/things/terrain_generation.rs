@@ -1,13 +1,18 @@
 // translation of https://github.com/sftd/blender-addons/blob/master/add_mesh_ant_landscape.py
 // into rust
 
+use crate::Model;
 use cgmath::prelude::*;
 use cgmath::{Matrix4, Point2, Point3, Rad, Vector3};
 use genmesh::{MapToVertices, Neighbors, Polygon, Quad, Triangle, Triangulate, Vertices};
 use mint::Vector3 as MintVector3;
 use rand_distr::{Distribution, UnitSphere};
+use vulkano::device::Device;
+
+use std::sync::Arc;
 
 use crate::render::mymesh::MyMesh;
+use crate::render::scene::Scene;
 use crate::things::hetero_terrain::hetero_terrain_new_perlin;
 use crate::utils::{Face, Vertex};
 
@@ -294,7 +299,21 @@ fn create_faces(out_faces: &mut Vec<Face>, vert_idx_1: &[u32], vert_idx_2: &[u32
   }
 }
 
-fn grid_gen(sub_division: i32, mesh_size: i32) -> (Vec<Vertex>, Vec<Face>) {
+fn grid_gen(
+  sub_division: i32,
+  mesh_size: i32,
+  oleft: Option<Vec<f32>>,
+  oright: Option<Vec<f32>>,
+  otop: Option<Vec<f32>>,
+  obottom: Option<Vec<f32>>,
+) -> (
+  Vec<Vertex>,
+  Vec<Face>,
+  Vec<f32>,
+  Vec<f32>,
+  Vec<f32>,
+  Vec<f32>,
+) {
   /*
   verts = []
       faces = []
@@ -326,6 +345,10 @@ fn grid_gen(sub_division: i32, mesh_size: i32) -> (Vec<Vertex>, Vec<Face>) {
   let delta = (mesh_size as f32) / ((sub_division - 1) as f32);
   let start = -(mesh_size / 2);
   let mut edgeloop_prev: Vec<u32> = vec![];
+  let mut left: Vec<f32> = vec![];
+  let mut right: Vec<f32> = vec![];
+  let mut top: Vec<f32> = vec![];
+  let mut bottom: Vec<f32> = vec![];
   for row_x in 0..sub_division {
     let mut edgeloop_cur: Vec<u32> = vec![];
     let x = (start as f32) + (row_x as f32) * delta;
@@ -361,9 +384,29 @@ fn grid_gen(sub_division: i32, mesh_size: i32) -> (Vec<Vertex>, Vec<Face>) {
         sealevel,
         platlevel,
       );
-      if (row_x == 0) || (row_x == sub_division - 1) || (row_y == 0) || (row_y == sub_division - 1)
-      {
-        z = 0.0;
+      if row_x == 0 {
+        if let Some(o) = oleft.as_ref().unwrap_or(&vec![]).get(row_y as usize) {
+          z = *o;
+        }
+        left.push(z);
+      }
+      if row_x == sub_division - 1 {
+        if let Some(o) = oright.as_ref().unwrap_or(&vec![]).get(row_y as usize) {
+          z = *o;
+        }
+        right.push(z);
+      }
+      if row_y == 0 {
+        if let Some(o) = otop.as_ref().unwrap_or(&vec![]).get(row_x as usize) {
+          z = *o;
+        }
+        top.push(z);
+      }
+      if row_y == sub_division - 1 {
+        if let Some(o) = obottom.as_ref().unwrap_or(&vec![]).get(row_x as usize) {
+          z = *o;
+        }
+        bottom.push(z);
       }
       edgeloop_cur.push(verts.len() as u32);
       verts.push(Vertex {
@@ -377,11 +420,38 @@ fn grid_gen(sub_division: i32, mesh_size: i32) -> (Vec<Vertex>, Vec<Face>) {
     }
     edgeloop_prev = edgeloop_cur;
   }
-  (verts, faces)
+  (verts, faces, left, right, top, bottom)
 }
 
-pub fn execute(sub_division: i32, mesh_size: i32, x: f32, z: f32) -> MyMesh {
-  let (verts, faces) = grid_gen(sub_division, mesh_size);
+#[derive(Clone)]
+pub struct TerrainModel {
+  model: Model,
+  scene: Scene,
+  pub left: Vec<f32>,
+  pub right: Vec<f32>,
+  pub top: Vec<f32>,
+  pub bottom: Vec<f32>,
+}
+
+impl TerrainModel {
+  pub fn model_scene(&self) -> (Model, Scene) {
+    (self.model.clone(), self.scene.clone())
+  }
+}
+
+pub fn execute(
+  device: &Arc<Device>,
+  sub_division: i32,
+  mesh_size: i32,
+  x: f32,
+  z: f32,
+  oleft: Option<Vec<f32>>,
+  oright: Option<Vec<f32>>,
+  otop: Option<Vec<f32>>,
+  obottom: Option<Vec<f32>>,
+) -> TerrainModel {
+  let (verts, faces, left, right, top, bottom) =
+    grid_gen(sub_division, mesh_size, oleft, oright, otop, obottom);
   let vertex: Vec<Point3<f32>> = verts
     .iter()
     .map(|v| Point3::new(v.position.0, v.position.1, v.position.2))
@@ -420,5 +490,13 @@ pub fn execute(sub_division: i32, mesh_size: i32, x: f32, z: f32) -> MyMesh {
     Matrix4::from_angle_x(Rad(std::f32::consts::FRAC_PI_2)),
     [1.0, 1.0, 15.0],
   );
-  res
+
+  TerrainModel {
+    model: res.get_buffers(&device),
+    scene: Default::default(),
+    left,
+    right,
+    top,
+    bottom,
+  }
 }

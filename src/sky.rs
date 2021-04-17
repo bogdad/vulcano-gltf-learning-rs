@@ -1,19 +1,21 @@
 use cgmath::{Point3, Vector2};
+use parking_lot::MappedRwLockReadGuard;
+use parking_lot::RwLockReadGuard;
 use vulkano::device::Device;
 
 use futures::executor::block_on;
 use futures::future::RemoteHandle;
+use parking_lot::RwLock;
 use std::cmp::Ordering;
 use std::sync::Arc;
-use std::sync::RwLock;
 
 use crate::actor::Actor;
 use crate::executor::Executor;
 use crate::render::model::Model;
 use crate::render::scene::Scene;
-use crate::things::terrain_generation;
-
 use crate::shaders::main::fs;
+use crate::things::terrain_generation;
+use crate::things::terrain_generation::TerrainModel;
 
 fn xindex(base: f32, step: isize) -> f32 {
   Sky::X * (step as f32) + base
@@ -53,45 +55,82 @@ fn crop(x: isize, bound: usize) -> Option<usize> {
   Some(x as usize)
 }
 
+type ArcCacheCellInner = Arc<RwLock<CacheCellInner>>;
+
 #[derive(Default)]
 struct CacheCellInner {
-  model: Option<(Model, Scene)>,
+  model: Option<TerrainModel>,
 }
 
 #[derive(Default)]
 struct CacheCell {
-  inner: Arc<RwLock<CacheCellInner>>,
+  inner: ArcCacheCellInner,
   future: Option<RemoteHandle<()>>,
+}
+
+fn get_border_vec(
+  cell_opt: Option<ArcCacheCellInner>,
+  f: fn(&TerrainModel) -> Vec<f32>,
+) -> Option<Vec<f32>> {
+  if cell_opt.is_none() {
+    return None;
+  }
+  let cell = cell_opt.unwrap();
+  let read = cell.read();
+  let tm: Option<&TerrainModel> = ((*read).model).as_ref();
+  Some(f(&tm.unwrap()))
 }
 
 impl CacheCell {
   fn is_queued(&self) -> bool {
     self.future.is_some()
   }
-  fn spawn_region(&mut self, executor: &Executor, device: &Arc<Device>, x: f32, z: f32) {
+
+  fn spawn_region(
+    &mut self,
+    executor: &Executor,
+    device: &Arc<Device>,
+    x: f32,
+    z: f32,
+    oleft: Option<ArcCacheCellInner>,
+    oright: Option<ArcCacheCellInner>,
+    otop: Option<ArcCacheCellInner>,
+    obottom: Option<ArcCacheCellInner>,
+  ) {
     if self.future.is_some() {
       return;
     }
     {
-      let read_locked = self.inner.read().unwrap();
+      let read_locked = self.inner.read();
       if read_locked.model.is_some() {
         return;
       }
     }
+
     let weak_device = Arc::downgrade(device);
     let weak_self_inner = Arc::downgrade(&self.inner);
     let fut = async move {
       // println!("generated ({:?},{:?})", x, z);
       if let Some(device) = weak_device.upgrade() {
         if let Some(self_inner) = weak_self_inner.upgrade() {
-          let mut locked = self_inner.write().unwrap();
+          let mut locked = self_inner.write();
           if locked.model.is_some() {
             return;
           }
-          let res = (
-            terrain_generation::execute(8, Sky::X as i32, x + Sky::X / 2.0, z + Sky::Z / 2.0)
-              .get_buffers(&device),
-            Default::default(),
+          let vleft = get_border_vec(oleft, |tm| tm.right.clone());
+          let vright = get_border_vec(oright, |tm| tm.left.clone());
+          let vtop = get_border_vec(otop, |tm| tm.bottom.clone());
+          let vbottom = get_border_vec(obottom, |tm| tm.top.clone());
+          let res = terrain_generation::execute(
+            &device,
+            8,
+            Sky::X as i32,
+            x + Sky::X / 2.0,
+            z + Sky::Z / 2.0,
+            vleft,
+            vright,
+            vtop,
+            vbottom,
           );
           locked.model = Some(res);
         }
@@ -103,7 +142,7 @@ impl CacheCell {
 
   fn block(&mut self) {
     {
-      let read_locked = self.inner.read().unwrap();
+      let read_locked = self.inner.read();
       if read_locked.model.is_some() {
         return;
       }
@@ -112,21 +151,31 @@ impl CacheCell {
     block_on(future.unwrap())
   }
 
-  fn create_block(&mut self, executor: &Executor, device: &Arc<Device>, x: f32, z: f32) {
+  fn create_block(
+    &mut self,
+    executor: &Executor,
+    device: &Arc<Device>,
+    x: f32,
+    z: f32,
+    oleft: Option<ArcCacheCellInner>,
+    oright: Option<ArcCacheCellInner>,
+    otop: Option<ArcCacheCellInner>,
+    obottom: Option<ArcCacheCellInner>,
+  ) {
     {
-      let peaked = self.inner.read().unwrap();
+      let peaked = self.inner.read();
       if peaked.model.is_some() {
         return;
       }
     }
     println!("blocking on sky");
-    self.spawn_region(executor, device, x, z);
+    self.spawn_region(executor, device, x, z, oleft, oright, otop, obottom);
     self.block();
   }
 
   fn _status(&self) -> String {
     let model = {
-      let read_locked = self.inner.read().unwrap();
+      let read_locked = self.inner.read();
       read_locked.model.is_some()
     };
     format!(
@@ -136,8 +185,8 @@ impl CacheCell {
     )
   }
 
-  fn model(&self) -> Option<(Model, Scene)> {
-    let read_locked = self.inner.read().unwrap();
+  fn model(&self) -> Option<TerrainModel> {
+    let read_locked = self.inner.read();
     read_locked.model.clone()
   }
 }
@@ -201,22 +250,61 @@ impl Sky {
     }
   }
 
+  fn get_arc(&self, cell: &(isize, isize)) -> Option<ArcCacheCellInner> {
+    let ppp = gii(cell.0, cell.1);
+    if ppp.is_none() {
+      return None;
+    }
+    if !self.cache[ppp.unwrap()].is_queued() {
+      None
+    } else {
+      Some(self.cache[tii(cell)].inner.clone())
+    }
+  }
+
   pub fn tick(&mut self, executor: &Executor) {
     let ahead_div = 3.0;
     let x_ahead = Sky::X / ahead_div;
     let z_ahead = Sky::Z / ahead_div;
 
-    self.cache[giiu(0, 0)].create_block(executor, &self.device, self.x.x, self.z.x);
+    self.cache[giiu(0, 0)].create_block(
+      executor,
+      &self.device,
+      self.x.x,
+      self.z.x,
+      None,
+      None,
+      None,
+      None,
+    );
 
     let indices = self.real_inds(Sky::X, Sky::Z);
     let half_indices = self.real_inds(x_ahead, z_ahead);
     if half_indices != (0, 0) {
       // spawn ahead of time model creation
-      for try_cell in &self.ordered_cells {
+      let ordered_cells = &self.ordered_cells;
+      for try_cell in ordered_cells {
         if !self.cache[tii(try_cell)].is_queued() {
           let xx = xindex(self.x.x, try_cell.0);
           let zz = zindex(self.z.x, try_cell.1);
-          self.cache[tii(try_cell)].spawn_region(executor, &self.device, xx, zz);
+          let try_left = (try_cell.0 - 1, try_cell.1);
+          let try_right = (try_cell.0 + 1, try_cell.1);
+          let try_top = (try_cell.0, try_cell.1 - 1);
+          let try_bottom = (try_cell.0, try_cell.1 + 1);
+          let oleft = self.get_arc(&try_left);
+          let oright = self.get_arc(&try_right);
+          let otop = self.get_arc(&try_top);
+          let obottom = self.get_arc(&try_bottom);
+          self.cache[tii(try_cell)].spawn_region(
+            executor,
+            &self.device,
+            xx,
+            zz,
+            oleft,
+            oright,
+            otop,
+            obottom,
+          );
         }
       }
     }
@@ -263,11 +351,15 @@ impl Sky {
   }
 
   pub fn get_current(&self) -> Vec<(Model, Scene)> {
-    let mut res: Vec<(Model, Scene)> =
-      vec![self.cache[giiu(0, 0)].model().as_ref().unwrap().clone()];
+    let mut res: Vec<(Model, Scene)> = vec![self.cache[giiu(0, 0)]
+      .model()
+      .map(|tm| tm.model_scene())
+      .as_ref()
+      .unwrap()
+      .clone()];
     for (i, j) in &self.ordered_cells {
       if i.abs() + j.abs() < 10 {
-        if let Some(elem) = &self.cache[giiu(*i, *j)].model() {
+        if let Some(elem) = &self.cache[giiu(*i, *j)].model().map(|tm| tm.model_scene()) {
           res.push(elem.clone());
         };
       }
