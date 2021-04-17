@@ -89,7 +89,7 @@ impl CacheCell {
             return;
           }
           let res = (
-            terrain_generation::execute(32, Sky::X as i32, x + Sky::X / 2.0, z + Sky::Z / 2.0)
+            terrain_generation::execute(8, Sky::X as i32, x + Sky::X / 2.0, z + Sky::Z / 2.0)
               .get_buffers(&device),
             Default::default(),
           );
@@ -155,10 +155,10 @@ pub struct Sky {
 impl Sky {
   const X: f32 = 4.0;
   const Z: f32 = 4.0;
-  const X_ROWS: usize = 9;
-  const Z_ROWS: usize = 9;
-  const MX: usize = 4;
-  const MZ: usize = 4;
+  const X_ROWS: usize = 39;
+  const Z_ROWS: usize = 39;
+  const MX: usize = 19;
+  const MZ: usize = 19;
 
   pub fn new(device: &Arc<Device>, x: f32, z: f32) -> Self {
     let mut cache: Vec<CacheCell> = vec![];
@@ -266,7 +266,7 @@ impl Sky {
     let mut res: Vec<(Model, Scene)> =
       vec![self.cache[giiu(0, 0)].model().as_ref().unwrap().clone()];
     for (i, j) in &self.ordered_cells {
-      if i.abs() + j.abs() < 4 {
+      if i.abs() + j.abs() < 10 {
         if let Some(elem) = &self.cache[giiu(*i, *j)].model() {
           res.push(elem.clone());
         };
