@@ -19,6 +19,7 @@ use crate::sign_post::SignPost;
 use crate::things::primitives::{PrimitiveCube, PrimitiveTriangle};
 use crate::things::texts::Texts;
 use crate::world::World;
+use crate::sounds::Sounds;
 use crate::Graph;
 use crate::Model;
 
@@ -26,6 +27,7 @@ pub struct Game {
   graph: Graph,
   camera: Camera,
   world: World,
+  sounds: Sounds,
   recreate_swapchain: bool,
   models: Vec<Model>,
   previous_frame_end: Option<Box<dyn GpuFuture>>,
@@ -86,6 +88,8 @@ impl Game {
 
     let world = World::new(executor, &graph, sign_posts);
 
+    let sounds = Sounds::new();
+
     let recreate_swapchain = false;
 
     let models = vec![
@@ -116,6 +120,7 @@ impl Game {
       world,
       recreate_swapchain,
       models,
+      sounds,
       system,
       previous_frame_end,
       cmd_pressed: false,
@@ -226,6 +231,10 @@ impl Game {
         self.previous_frame_end = Some(sync::now(self.graph.device.clone()).boxed());
       }
     }
+  }
+
+  pub fn init(&mut self) {
+    self.sounds.play();
   }
 
   pub fn tick(&mut self) {

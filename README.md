@@ -5,6 +5,7 @@
 
 - [ ] how do we make terrain under the clouds
 - [ ] how do we make clouds transparent
+- [x] how do we make sound environment
 - [x] how do we make clouds seamless
 - [x] how do we debug skybox
 - [x] how do we mouse look
@@ -16,6 +17,11 @@
 - [x] how do we generate random "cloud like landcapes" on the fly
 - [ ] how do vertex normals work
 - [x] how do coordinate systems work
+
+## how do we make sound environment
+
+we are trying to play a sound of the wind
+https://freesound.org/people/Huggy13ear/sounds/138970/ by Huggy13ear.
 
 ## how do we make clouds seamless 2
 

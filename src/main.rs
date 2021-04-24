@@ -31,6 +31,7 @@ mod game;
 mod sign_post;
 mod sky;
 mod world;
+mod sounds;
 
 mod executor;
 mod render;
@@ -235,6 +236,7 @@ fn main() {
 
   let mut game = Game::new(executor, graph);
 
+  game.init();
   event_loop.run(move |event, _, mut control_flow| {
     game.tick();
     game.gloop(event, &mut control_flow)
