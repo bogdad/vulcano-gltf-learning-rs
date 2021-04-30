@@ -1,6 +1,4 @@
 use cgmath::{Point3, Vector2};
-use parking_lot::MappedRwLockReadGuard;
-use parking_lot::RwLockReadGuard;
 use vulkano::device::Device;
 
 use futures::executor::block_on;
@@ -351,12 +349,14 @@ impl Sky {
   }
 
   pub fn get_current(&self) -> Vec<(Model, Scene)> {
-    let mut res: Vec<(Model, Scene)> = vec![self.cache[giiu(0, 0)]
+    let mut res: Vec<(Model, Scene)> = vec![];
+    let mut added = vec![self.cache[giiu(0, 0)]
       .model()
       .map(|tm| tm.model_scene())
       .as_ref()
       .unwrap()
       .clone()];
+    res.append(&mut added);
     for (i, j) in &self.ordered_cells {
       if i.abs() + j.abs() < 10 {
         if let Some(elem) = &self.cache[giiu(*i, *j)].model().map(|tm| tm.model_scene()) {
@@ -364,20 +364,22 @@ impl Sky {
         };
       }
     }
-    res[0].1.point_lights = vec![
-      Arc::new(fs::ty::PointLight {
-        position: [-100.0, -100.0, -1000.0],
-        color: [1.0, 1.0, 1.0],
-        intensity: 1000.0 * 1000.0,
-        ..Default::default()
-      }),
-      Arc::new(fs::ty::PointLight {
-        position: [-13.0, 10.0, -14.0],
-        color: [1.0, 1.0, 0.0],
-        intensity: 400.0,
-        ..Default::default()
-      }),
-    ];
+    if res.len() > 0 {
+      res[0].1.point_lights = vec![
+        Arc::new(fs::ty::PointLight {
+          position: [-100.0, -100.0, -1000.0],
+          color: [1.0, 1.0, 1.0],
+          intensity: 1000.0 * 1000.0,
+          ..Default::default()
+        }),
+        Arc::new(fs::ty::PointLight {
+          position: [-13.0, 10.0, -14.0],
+          color: [1.0, 1.0, 0.0],
+          intensity: 400.0,
+          ..Default::default()
+        }),
+      ];
+    }
     res
   }
 

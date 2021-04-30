@@ -16,6 +16,7 @@ use crate::executor::Executor;
 use crate::render::system::System;
 use crate::render::textures::Textures;
 use crate::sign_post::SignPost;
+use crate::things::lap::Lap;
 use crate::things::primitives::{PrimitiveCube, PrimitiveTriangle};
 use crate::things::texts::Texts;
 use crate::world::World;
@@ -106,6 +107,7 @@ impl Game {
       PrimitiveTriangle::new(Point3::new(10.0, 0.0, 0.0))
         .mesh
         .get_buffers(&graph.device),
+      Lap::new(&graph.device).model,
     ];
 
     let textures = Textures::new(&texts);

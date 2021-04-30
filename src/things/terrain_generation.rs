@@ -484,7 +484,7 @@ pub fn execute(
     .collect();
   let tex_offset = (0..vertex.len()).map(|_i| Point2::new(0, 0)).collect();
 
-  let mut res = MyMesh::new(vertex, tex, tex_offset, normals, index, transform);
+  let mut res = MyMesh::new(vertex, tex, tex_offset, normals, index, transform, false);
   res.update_transform_2(
     Vector3::new(x, 0.0, z),
     Matrix4::from_angle_x(Rad(std::f32::consts::FRAC_PI_2)),

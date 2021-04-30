@@ -55,6 +55,6 @@ impl Model {
   }
 
   pub fn from_gltf(path: &Path, device: &Arc<Device>) -> Model {
-    MyMesh::from_gltf(path).get_buffers(device)
+    MyMesh::from_gltf(path, false).get_buffers(device)
   }
 }

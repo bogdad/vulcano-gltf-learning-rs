@@ -34,53 +34,23 @@ impl MyMesh {
     normals: Vec<cgmath::Point3<f32>>,
     index: Vec<u32>,
     transform: Matrix4<f32>,
+    print: bool,
   ) -> MyMesh {
-    /*let max_x = vertex
-      .iter()
-      .cloned()
-      .map(|p| p.x)
-      .fold(-0.0 / 0.0, f32::max);
-    let min_x = vertex
-      .iter()
-      .cloned()
-      .map(|p| p.x)
-      .fold(-0.0 / 0.0, f32::min);
-    let max_y = vertex
-      .iter()
-      .cloned()
-      .map(|p| p.y)
-      .fold(-0.0 / 0.0, f32::max);
-    let min_y = vertex
-      .iter()
-      .cloned()
-      .map(|p| p.y)
-      .fold(-0.0 / 0.0, f32::min);
-    let max_z = vertex
-      .iter()
-      .cloned()
-      .map(|p| p.z)
-      .fold(-0.0 / 0.0, f32::max);
-    let min_z = vertex
-      .iter()
-      .cloned()
-      .map(|p| p.z)
-      .fold(-0.0 / 0.0, f32::min);
-      */
-    /*println!(
-      "mymesh: x ({}, {}) y ({}, {}) z ({}, {})",
-      min_x, max_x, min_y, max_y, min_z, max_z
-    );*/
-    MyMesh {
+    let mesh = MyMesh {
       vertex,
       tex,
       tex_offset,
       normals,
       index,
       transform,
-    }
+    };
+    if print {
+      mesh.printstats();
+    };
+    mesh
   }
 
-  pub fn from_gltf(path: &Path) -> MyMesh {
+  pub fn from_gltf(path: &Path, print: bool) -> MyMesh {
     let (d, b, _i) = gltf::import(path).unwrap();
     let mesh = d.meshes().next().unwrap();
     let primitive = mesh.primitives().next().unwrap();
@@ -128,8 +98,7 @@ impl MyMesh {
     let transform = Matrix4::from(node.transform().matrix());
     // let (translation, rotation, scale) = node.transform().decomposed();
     // println!("t {:?} r {:?} s {:?}", translation, rotation, scale);
-
-    MyMesh::new(vertex, tex, tex_offset, normals, index.unwrap(), transform)
+    MyMesh::new(vertex, tex, tex_offset, normals, index.unwrap(), transform, print)
   }
 
   pub fn get_buffers(&self, device: &Arc<Device>) -> Model {
@@ -211,6 +180,51 @@ impl MyMesh {
     let t = Matrix4::from_translation(translation);
     let s = Matrix4::from_nonuniform_scale(scale[0], scale[1], scale[2]);
     self.transform = t * rotation * s;
+  }
+
+  pub fn printstats(&self) {
+    let max_x = self.vertex
+      .iter()
+      .cloned()
+      .map(|p| p.x)
+      .fold(-0.0 / 0.0, f32::max);
+    let min_x = self.vertex
+      .iter()
+      .cloned()
+      .map(|p| p.x)
+      .fold(-0.0 / 0.0, f32::min);
+    let max_y = self.vertex
+      .iter()
+      .cloned()
+      .map(|p| p.y)
+      .fold(-0.0 / 0.0, f32::max);
+    let min_y = self.vertex
+      .iter()
+      .cloned()
+      .map(|p| p.y)
+      .fold(-0.0 / 0.0, f32::min);
+    let max_z = self.vertex
+      .iter()
+      .cloned()
+      .map(|p| p.z)
+      .fold(-0.0 / 0.0, f32::max);
+    let min_z = self.vertex
+      .iter()
+      .cloned()
+      .map(|p| p.z)
+      .fold(-0.0 / 0.0, f32::min);
+    println!(
+      "mymesh: x ({}, {}) y ({}, {}) z ({}, {})",
+      min_x, max_x, min_y, max_y, min_z, max_z
+    );
+    println!(
+      "mesh properties: vertices {} normals {} indices {}",
+      self.vertex.len(),
+      self.normals.len(),
+      self.index.len()
+    );
+    //println!("vertex {:?}", self.vertex);
+    //println!("normal {:?}", self.normals);
   }
 }
 

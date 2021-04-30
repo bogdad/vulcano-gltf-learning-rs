@@ -5,6 +5,7 @@
 
 - [ ] how do we make terrain under the clouds
 - [ ] how do we make clouds transparent
+- [ ] how do we add power lines
 - [x] how do we make sound environment
 - [x] how do we make clouds seamless
 - [x] how do we debug skybox
@@ -17,6 +18,16 @@
 - [x] how do we generate random "cloud like landcapes" on the fly
 - [ ] how do vertex normals work
 - [x] how do coordinate systems work
+
+## how do we add power lines
+
+we can get a free model of a power line here https://3dsky.org/3dmodels/show/liep_2
+
+and we get this
+
+![power line isolator](./images/17.png)
+
+because our gltf importer only gets one primitive of many. 
 
 ## how do we make sound environment
 
