@@ -9,6 +9,7 @@ use crate::sign_post::SignPost;
 use crate::sky::Sky;
 use crate::things::primitives::PrimitiveSkyBox;
 use crate::Graph;
+use crate::Settings;
 
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub enum Mode {
@@ -36,6 +37,7 @@ impl Mode {
 }
 
 pub struct World {
+  settings: Settings,
   executor: Executor,
   pub mode: Mode,
   sky: Sky,
@@ -43,10 +45,16 @@ pub struct World {
   skybox: PrimitiveSkyBox,
 }
 impl World {
-  pub fn new(executor: Executor, graph: &Graph, sign_posts: Vec<SignPost>) -> Self {
+  pub fn new(
+    settings: Settings,
+    executor: Executor,
+    graph: &Graph,
+    sign_posts: Vec<SignPost>,
+  ) -> Self {
     let sky = Sky::new(&graph.device, 0.0, 0.0);
     let skybox = PrimitiveSkyBox::new(&graph.device);
     World {
+      settings,
       executor,
       mode: Mode::MoveCameraPos,
       sky,
@@ -83,9 +91,13 @@ impl World {
 
   pub fn get_models(&self) -> Vec<ModelScene> {
     let mut res = vec![];
-    res.extend(self.sky.get_current());
-    for sign_post in &self.sign_posts {
-      res.push((sign_post.get_model().clone(), Default::default()));
+    if self.settings.sky_enabled {
+      res.extend(self.sky.get_current());
+    }
+    if self.settings.letters_enabled {
+      for sign_post in &self.sign_posts {
+        res.push((sign_post.get_model().clone(), Default::default()));
+      }
     }
     res
   }

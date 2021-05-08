@@ -30,11 +30,12 @@ mod camera;
 mod game;
 mod sign_post;
 mod sky;
-mod world;
 mod sounds;
+mod world;
 
 mod executor;
 mod render;
+mod settings;
 mod shaders;
 mod things;
 mod utils;
@@ -42,6 +43,7 @@ mod utils;
 use executor::Executor;
 use game::Game;
 use render::model::Model;
+use settings::Settings;
 use shaders::{main, skybox};
 
 pub struct Graph {
@@ -234,7 +236,16 @@ fn main() {
 
   let executor = Executor::new(thread_pool);
 
-  let mut game = Game::new(executor, graph);
+  let settings = Settings {
+    sky_enabled: true,
+    box_enabled: true,
+    dog_enabled: true,
+    letters_enabled: true,
+    triangle_enabled: true,
+    lap_enabled: true,
+  };
+
+  let mut game = Game::new(settings, executor, graph);
 
   game.init();
   event_loop.run(move |event, _, mut control_flow| {

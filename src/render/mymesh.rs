@@ -1,7 +1,11 @@
 use vulkano::buffer::{BufferUsage, CpuAccessibleBuffer};
 use vulkano::device::Device;
 
+use genmesh::generators::{Cube, IndexedPolygon};
+use genmesh::{MapToVertices, Neighbors, Triangle, Triangulate, Vertices};
 use gltf::scene::Node;
+
+use mint::Vector3 as MintVector3;
 
 //use cgmath::prelude::*;
 use cgmath::Transform;
@@ -24,6 +28,7 @@ pub struct MyMesh {
   pub normals: Vec<Point3<f32>>,
   pub index: Vec<u32>,
   pub transform: Matrix4<f32>,
+  print: bool,
 }
 
 impl MyMesh {
@@ -43,6 +48,7 @@ impl MyMesh {
       normals,
       index,
       transform,
+      print,
     };
     if print {
       mesh.printstats();
@@ -53,52 +59,91 @@ impl MyMesh {
   pub fn from_gltf(path: &Path, print: bool) -> MyMesh {
     let (d, b, _i) = gltf::import(path).unwrap();
     let mesh = d.meshes().next().unwrap();
-    let primitive = mesh.primitives().next().unwrap();
-    let reader = primitive.reader(|buffer| Some(&b[buffer.index()]));
-    let vertex = {
-      let iter = reader.read_positions().unwrap_or_else(|| {
-        panic!(
-          "primitives must have the POSITION attribute (mesh: {}, primitive: {})",
-          mesh.index(),
-          primitive.index()
-        )
-      });
+    let mut all_vertex = vec![];
+    let mut all_normals = vec![];
+    let mut all_tex = vec![];
+    let mut all_tex_offset = vec![];
+    let mut all_index = vec![];
+    let mut bounding_boxes = vec![];
+    let mut last_index = 0;
+    for primitive in mesh.primitives() {
+      println!("- Primitive #{}", primitive.index());
+      for (semantic, _) in primitive.attributes() {
+        println!("-- {:?}", semantic);
+      }
+      println!("{:?}", primitive.bounding_box());
+      bounding_boxes.push(primitive.bounding_box().clone());
+      let reader = primitive.reader(|buffer| Some(&b[buffer.index()]));
+      let mut vertex = {
+        let iter = reader.read_positions().unwrap_or_else(|| {
+          panic!(
+            "primitives must have the POSITION attribute (mesh: {}, primitive: {})",
+            mesh.index(),
+            primitive.index()
+          )
+        });
 
-      iter
-        .map(|arr| {
-          //println!("p {:?}", arr);
-          Point3::from(arr)
-        })
-        .collect::<Vec<_>>()
-    };
-    let tex = (0..vertex.len())
-      .map(|_i| Point2::new(-1.0, -1.0))
-      .collect();
-    let tex_offset = (0..vertex.len()).map(|_i| Point2::new(0, 0)).collect();
-    let normals = {
-      let iter = reader.read_normals().unwrap_or_else(|| {
-        panic!(
-          "primitives must have the NORMALS attribute (mesh: {}, primitive: {})",
-          mesh.index(),
-          primitive.index()
-        )
-      });
-      iter
-        .map(|arr| {
-          // println!("n {:?}", arr);
-          Point3::from(arr)
-        })
-        .collect::<Vec<_>>()
-    };
-    let index = reader
-      .read_indices()
-      .map(|read_indices| read_indices.into_u32().collect::<Vec<_>>());
+        iter
+          .map(|arr| {
+            //println!("p {:?}", arr);
+            Point3::from(arr)
+          })
+          .collect::<Vec<_>>()
+      };
+      let mut tex = (0..vertex.len())
+        .map(|_i| Point2::new(-1.0, -1.0))
+        .collect();
 
+      let mut tex_offset = (0..vertex.len()).map(|_i| Point2::new(0, 0)).collect();
+      let mut normals = {
+        let iter = reader.read_normals().unwrap_or_else(|| {
+          panic!(
+            "primitives must have the NORMALS attribute (mesh: {}, primitive: {})",
+            mesh.index(),
+            primitive.index()
+          )
+        });
+        iter
+          .map(|arr| {
+            // println!("n {:?}", arr);
+            Point3::from(arr)
+          })
+          .collect::<Vec<_>>()
+      };
+      let index = reader
+        .read_indices()
+        .map(|read_indices| read_indices.into_u32().collect::<Vec<_>>());
+
+      all_normals.append(&mut normals);
+      all_tex.append(&mut tex);
+      all_tex_offset.append(&mut tex_offset);
+      let mut read_index = index.unwrap();
+      for ind in read_index.iter_mut() {
+        *ind = last_index + *ind;
+      }
+      all_index.append(&mut read_index);
+      last_index += vertex.len() as u32;
+      all_vertex.append(&mut vertex);
+    }
     let node: Node = d.nodes().find(|node| node.mesh().is_some()).unwrap();
     let transform = Matrix4::from(node.transform().matrix());
     // let (translation, rotation, scale) = node.transform().decomposed();
     // println!("t {:?} r {:?} s {:?}", translation, rotation, scale);
-    MyMesh::new(vertex, tex, tex_offset, normals, index.unwrap(), transform, print)
+    let mut res = MyMesh::new(
+      all_vertex,
+      all_tex,
+      all_tex_offset,
+      all_normals,
+      all_index,
+      transform,
+      print,
+    );
+    if print {
+      for bounding_box in bounding_boxes {
+        res.add_bounding_box(bounding_box.min, bounding_box.max);
+      }
+    }
+    res
   }
 
   pub fn get_buffers(&self, device: &Arc<Device>) -> Model {
@@ -183,32 +228,38 @@ impl MyMesh {
   }
 
   pub fn printstats(&self) {
-    let max_x = self.vertex
+    let max_x = self
+      .vertex
       .iter()
       .cloned()
       .map(|p| p.x)
       .fold(-0.0 / 0.0, f32::max);
-    let min_x = self.vertex
+    let min_x = self
+      .vertex
       .iter()
       .cloned()
       .map(|p| p.x)
       .fold(-0.0 / 0.0, f32::min);
-    let max_y = self.vertex
+    let max_y = self
+      .vertex
       .iter()
       .cloned()
       .map(|p| p.y)
       .fold(-0.0 / 0.0, f32::max);
-    let min_y = self.vertex
+    let min_y = self
+      .vertex
       .iter()
       .cloned()
       .map(|p| p.y)
       .fold(-0.0 / 0.0, f32::min);
-    let max_z = self.vertex
+    let max_z = self
+      .vertex
       .iter()
       .cloned()
       .map(|p| p.z)
       .fold(-0.0 / 0.0, f32::max);
-    let min_z = self.vertex
+    let min_z = self
+      .vertex
       .iter()
       .cloned()
       .map(|p| p.z)
@@ -225,6 +276,63 @@ impl MyMesh {
     );
     //println!("vertex {:?}", self.vertex);
     //println!("normal {:?}", self.normals);
+  }
+
+  pub fn add_bounding_box(&mut self, min: [f32; 3], max: [f32; 3]) {
+    println!("adding bounding box {:?} {:?}", min, max);
+    let cube = Cube::new();
+    let mut vertex: Vec<Point3<f32>> = cube
+      .clone()
+      .vertex(|v| Point3::<f32>::new(v.pos.x, v.pos.y, v.pos.z))
+      .vertex(|v| {
+        Point3::<f32>::new(
+          if v.x < 0.0 { min[0] } else { max[0] },
+          if v.y < 0.0 { min[1] } else { max[1] },
+          if v.z < 0.0 { min[2] } else { max[2] },
+        )
+      })
+      .vertices()
+      .collect();
+
+    let triangles: Vec<Triangle<usize>> = cube.indexed_polygon_iter().triangulate().collect();
+
+    let neighbours = Neighbors::new(vertex.clone(), triangles.clone());
+
+    let mut index: Vec<u32> = triangles
+      .iter()
+      .cloned()
+      .vertices()
+      .map(|v| v as u32)
+      .collect();
+
+    let mut normals: Vec<Point3<f32>> = (0..vertex.len())
+      .map(|i| neighbours.normal_for_vertex(i, |v| MintVector3::<f32>::from([v.x, v.y, v.z])))
+      .map(|v| Point3::from((v.x, v.y, v.z)))
+      .collect();
+
+    let mut tex = (0..vertex.len())
+      .map(|_i| Point2::new(-1.0, -1.0))
+      .collect();
+
+    let mut tex_offset = (0..vertex.len()).map(|_i| Point2::new(0, 0)).collect();
+
+    self.vertex.append(&mut vertex);
+    self.normals.append(&mut normals);
+    self.tex.append(&mut tex);
+    self.tex_offset.append(&mut tex_offset);
+    self.index.append(&mut index);
+  }
+
+  pub fn map_vertex<F>(&mut self, f: F)
+  where
+    F: Fn(&mut Point3<f32>),
+  {
+    for (_i, v) in self.vertex.iter_mut().enumerate() {
+      f(&mut *v);
+    }
+    if self.print {
+      self.printstats();
+    }
   }
 }
 

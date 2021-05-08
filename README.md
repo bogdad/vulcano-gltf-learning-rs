@@ -21,6 +21,10 @@
 
 ## how do we add power lines
 
+![power line, in full](./images/18.png)
+
+story:
+
 we can get a free model of a power line here https://3dsky.org/3dmodels/show/liep_2
 
 and we get this
@@ -28,6 +32,9 @@ and we get this
 ![power line isolator](./images/17.png)
 
 because our gltf importer only gets one primitive of many. 
+
+after some feedling, and the bug was - when a mesh consists of primitives, the indices of vertices in each primitive starts from zero, i.e. there is no global vertex list, was very puzzled until saw [this](https://github.com/adrien-ben/gltf-viewer-rs/blob/ee6454b2ce1c666037ee7e8704bb46e00f5b94cc/model/src/mesh.rs#L157)
+
 
 ## how do we make sound environment
 

@@ -16,15 +16,17 @@ use crate::executor::Executor;
 use crate::render::system::System;
 use crate::render::textures::Textures;
 use crate::sign_post::SignPost;
+use crate::sounds::Sounds;
 use crate::things::lap::Lap;
 use crate::things::primitives::{PrimitiveCube, PrimitiveTriangle};
 use crate::things::texts::Texts;
 use crate::world::World;
-use crate::sounds::Sounds;
 use crate::Graph;
 use crate::Model;
+use crate::Settings;
 
 pub struct Game {
+  settings: Settings,
   graph: Graph,
   camera: Camera,
   world: World,
@@ -37,7 +39,7 @@ pub struct Game {
 }
 
 impl Game {
-  pub fn new(executor: Executor, graph: Graph) -> Game {
+  pub fn new(settings: Settings, executor: Executor, graph: Graph) -> Game {
     // gltf:
     // "and the default camera sits on the
     // -Z side looking toward the origin with +Y up"
@@ -87,28 +89,33 @@ impl Game {
       ));
     }
 
-    let world = World::new(executor, &graph, sign_posts);
+    let world = World::new(settings.clone(), executor, &graph, sign_posts);
 
     let sounds = Sounds::new();
 
     let recreate_swapchain = false;
 
-    let models = vec![
-      //Model::from_gltf(Path::new("models/creature.glb"), &device),
-      //Model::from_gltf(Path::new("models/creature2.glb"), &device),
-      //Model::from_gltf(Path::new("models/creature3.glb"), &device),
-      //Model::from_gltf(Path::new("models/landscape.glb"), &graph.device),
-      Model::from_gltf(Path::new("models/dog.glb"), &graph.device),
-      //Model::from_gltf(Path::new("models/box.glb"), &device),
-      //Model::from_gltf(Path::new("models/center.glb"), &device),
-      PrimitiveCube::new(2.0, 4.0, 8.0, (-8.0, 0.0, 0.0))
-        .mesh
-        .get_buffers(&graph.device),
-      PrimitiveTriangle::new(Point3::new(10.0, 0.0, 0.0))
-        .mesh
-        .get_buffers(&graph.device),
-      Lap::new(&graph.device).model,
-    ];
+    let mut models = vec![];
+    if settings.dog_enabled {
+      models.push(Model::from_gltf(Path::new("models/dog.glb"), &graph.device));
+    };
+    if settings.box_enabled {
+      models.push(
+        PrimitiveCube::new(2.0, 4.0, 8.0, (-8.0, 0.0, 0.0))
+          .mesh
+          .get_buffers(&graph.device),
+      );
+    };
+    if settings.box_enabled {
+      models.push(
+        PrimitiveTriangle::new(Point3::new(10.0, 0.0, 0.0))
+          .mesh
+          .get_buffers(&graph.device),
+      );
+    };
+    if settings.lap_enabled {
+      models.push(Lap::new(&graph.device).model);
+    };
 
     let textures = Textures::new(&texts);
 
@@ -117,6 +124,7 @@ impl Game {
     let previous_frame_end = Some(system_future);
 
     Game {
+      settings,
       graph,
       camera,
       world,
