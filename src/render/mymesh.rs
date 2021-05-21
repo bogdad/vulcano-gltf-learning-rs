@@ -14,6 +14,7 @@ use itertools::izip;
 
 use std::collections::HashMap;
 use std::ops::MulAssign;
+use std::sync::Arc;
 
 use crate::render::model::Model;
 use crate::utils::{Normal, Vertex};

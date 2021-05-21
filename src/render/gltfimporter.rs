@@ -6,15 +6,81 @@ use std::path::Path;
 
 use crate::render::mymesh::{InterestingMeshData, MyMesh, MyMeshData};
 
+type Vertex = Vec<Point3<f32>>;
+type Normals = Vec<Point3<f32>>;
+type Tex = Vec<Point2<f32>>;
+type TexOffset = Vec<Point2<i32>>;
+type Index = Vec<u32>;
+type Trans = Matrix4<f32>;
+
+#[derive(Default)]
+struct State {
+  last_index: u32,
+  all_vertex: Vertex,
+  all_normals: Normals,
+  all_tex: Tex,
+  all_tex_offset: TexOffset,
+  all_index: Index,
+}
+
+impl State {
+  pub fn collect(
+    &mut self,
+    vertex: &mut Vertex,
+    normals: &mut Normals,
+    tex: &mut Tex,
+    tex_offset: &mut TexOffset,
+    index: &mut Index,
+  ) {
+    self.all_normals.append(normals);
+    self.all_tex.append(tex);
+    self.all_tex_offset.append(tex_offset);
+    for ind in index.iter_mut() {
+      *ind = self.last_index + *ind;
+    }
+    self.all_index.append(index);
+    self.last_index += vertex.len() as u32;
+    self.all_vertex.append(vertex);
+  }
+
+  pub fn build_mesh_data(self, trans: Trans, inv_trans: Trans) -> MyMeshData {
+    MyMeshData {
+      vertex: self.all_vertex,
+      normals: self.all_normals,
+      tex: self.all_tex,
+      tex_offset: self.all_tex_offset,
+      index: self.all_index,
+      transform: trans,
+      inverse_transform: inv_trans,
+    }
+  }
+
+  pub fn build_mesh(
+    self,
+    interesting_map: HashMap<String, MyMeshData>,
+    transform: Trans,
+    print: bool,
+  ) -> MyMesh {
+    let interesting = InterestingMeshData {
+      map: interesting_map,
+    };
+    MyMesh::new_interesting(
+      self.all_vertex,
+      self.all_tex,
+      self.all_tex_offset,
+      self.all_normals,
+      self.all_index,
+      transform,
+      print,
+      interesting,
+    )
+  }
+}
+
 pub fn from_gltf(path: &Path, print: bool) -> MyMesh {
   let (d, b, _i) = gltf::import(path).unwrap();
-  let mut all_vertex = vec![];
-  let mut all_normals = vec![];
-  let mut all_tex = vec![];
-  let mut all_tex_offset = vec![];
-  let mut all_index = vec![];
+  let mut state = State::default();
   let mut bounding_boxes = vec![];
-  let mut last_index = 0;
   let mut interesting_map: HashMap<String, MyMeshData> = HashMap::new();
   let node: Node = d.nodes().find(|node| node.mesh().is_some()).unwrap();
   let transform = Matrix4::from(node.transform().matrix());
@@ -34,17 +100,8 @@ pub fn from_gltf(path: &Path, print: bool) -> MyMesh {
         None
       }
     });
-    let mut interesting_vertex = vec![];
-    let mut interesting_normals = vec![];
-    let mut interesting_tex = vec![];
-    let mut interesting_tex_offset = vec![];
-    let mut interesting_index = vec![];
-    let mut last_interesting_index = 0;
+    let mut interesting_state = State::default();
     for primitive in mesh.primitives() {
-      //for (semantic, _) in primitive.attributes() {
-      //  println!("-- {:?}", semantic);
-      //}
-      //println!("{:?}", primitive.bounding_box());
       bounding_boxes.push(primitive.bounding_box().clone());
       let reader = primitive.reader(|buffer| Some(&b[buffer.index()]));
       let mut vertex = {
@@ -89,16 +146,13 @@ pub fn from_gltf(path: &Path, print: bool) -> MyMesh {
         .map(|read_indices| read_indices.into_u32().collect::<Vec<_>>())
         .unwrap();
       if interesting_name.is_some() {
-        interesting_vertex.append(&mut vertex.clone());
-        interesting_normals.append(&mut normals.clone());
-        interesting_tex.append(&mut tex.clone());
-        interesting_tex_offset.append(&mut tex_offset.clone());
-        let mut index_clone = index.clone();
-        for ind in index_clone.iter_mut() {
-          *ind = last_interesting_index + *ind;
-        }
-        interesting_index.append(&mut index_clone);
-        last_interesting_index += vertex.len() as u32;
+        interesting_state.collect(
+          &mut vertex.clone(),
+          &mut normals.clone(),
+          &mut tex.clone(),
+          &mut tex_offset.clone(),
+          &mut index.clone(),
+        );
       }
       if print {
         println!(
@@ -109,26 +163,16 @@ pub fn from_gltf(path: &Path, print: bool) -> MyMesh {
           index.len()
         );
       }
-      all_normals.append(&mut normals);
-      all_tex.append(&mut tex);
-      all_tex_offset.append(&mut tex_offset);
-      for ind in index.iter_mut() {
-        *ind = last_index + *ind;
-      }
-      all_index.append(&mut index);
-      last_index += vertex.len() as u32;
-      all_vertex.append(&mut vertex);
+      state.collect(
+        &mut vertex,
+        &mut normals,
+        &mut tex,
+        &mut tex_offset,
+        &mut index,
+      );
     }
     if let Some(interesting_name) = interesting_name {
-      let interesting_mesh_data = MyMeshData {
-        vertex: interesting_vertex,
-        normals: interesting_normals,
-        tex: interesting_tex,
-        tex_offset: interesting_tex_offset,
-        index: interesting_index,
-        transform,
-        inverse_transform,
-      };
+      let interesting_mesh_data = interesting_state.build_mesh_data(transform, inverse_transform);
       if print {
         println!(
           "part {:?} vertices {:?} indices {:?}",
@@ -142,19 +186,8 @@ pub fn from_gltf(path: &Path, print: bool) -> MyMesh {
   }
   // let (translation, rotation, scale) = node.transform().decomposed();
   // println!("t {:?} r {:?} s {:?}", translation, rotation, scale);
-  let interesting = InterestingMeshData {
-    map: interesting_map,
-  };
-  let mut res = MyMesh::new_interesting(
-    all_vertex,
-    all_tex,
-    all_tex_offset,
-    all_normals,
-    all_index,
-    transform,
-    print,
-    interesting,
-  );
+  let mut res = state.build_mesh(interesting_map, transform, print);
+
   if print {
     for bounding_box in bounding_boxes {
       res.add_bounding_box(bounding_box.min, bounding_box.max);
