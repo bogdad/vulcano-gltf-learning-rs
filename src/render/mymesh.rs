@@ -41,6 +41,7 @@ pub struct MyMeshData {
   pub normals: Vec<Point3<f32>>,
   pub index: Vec<u32>,
   pub transform: Matrix4<f32>,
+  pub inverse_transform: Matrix4<f32>,
 }
 
 impl MyMesh {
@@ -75,6 +76,7 @@ impl MyMesh {
     print: bool,
     interesting: InterestingMeshData,
   ) -> MyMesh {
+    let inverse_transform = transform.inverse_transform().unwrap();
     let data = MyMeshData {
       vertex,
       tex,
@@ -82,6 +84,7 @@ impl MyMesh {
       normals,
       index,
       transform,
+      inverse_transform,
     };
     let mesh = MyMesh {
       data,
@@ -301,7 +304,22 @@ impl MyMesh {
 
 impl MyMeshData {
   pub fn add_consume(&mut self, other: &mut MyMeshData) {
-    let index_add: u32 = other.vertex.len() as u32;
+    /*
+    ---
+    I want to transform local vertices of the other mesh, so that when presented with
+    my transformation matrix other vertices have the same global position as they had before.
+    ---
+    Gl = TransformB x VertB
+    Gl = TransformA x VertX
+    TransformA x VertX = TransformB x VertB
+    VertX = InvA x TransformB x VertB
+    */
+    let mult_mat = self.inverse_transform * other.transform;
+    for vert in other.vertex.iter_mut() {
+      *vert = mult_mat.transform_point(*vert);
+    }
+
+    let index_add: u32 = self.vertex.len() as u32;
     self.vertex.append(&mut other.vertex);
     self.normals.append(&mut other.normals);
     self.tex.append(&mut other.tex);
@@ -371,6 +389,7 @@ pub fn from_gltf(path: &Path, print: bool) -> MyMesh {
   let mut interesting_map: HashMap<String, MyMeshData> = HashMap::new();
   let node: Node = d.nodes().find(|node| node.mesh().is_some()).unwrap();
   let transform = Matrix4::from(node.transform().matrix());
+  let inverse_transform = transform.inverse_transform().unwrap();
   println!("glb {:?}", path);
   for mesh in d.meshes() {
     let name_opt = mesh.name();
@@ -477,6 +496,7 @@ pub fn from_gltf(path: &Path, print: bool) -> MyMesh {
         tex_offset: interesting_tex_offset,
         index: interesting_index,
         transform,
+        inverse_transform,
       };
       println!(
         "part {:?} vertices {:?} indices {:?}",
