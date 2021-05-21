@@ -1,4 +1,6 @@
 use cgmath::{Matrix4, Point2, Point3, Transform};
+use gltf::buffer;
+use gltf::mesh::BoundingBox;
 use gltf::scene::Node;
 
 use std::collections::HashMap;
@@ -13,7 +15,7 @@ type TexOffset = Vec<Point2<i32>>;
 type Index = Vec<u32>;
 type Trans = Matrix4<f32>;
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 struct State {
   last_index: u32,
   all_vertex: Vertex,
@@ -77,16 +79,27 @@ impl State {
   }
 }
 
-pub fn from_gltf(path: &Path, print: bool) -> MyMesh {
-  let (d, b, _i) = gltf::import(path).unwrap();
-  let mut state = State::default();
-  let mut bounding_boxes = vec![];
-  let mut interesting_map: HashMap<String, MyMeshData> = HashMap::new();
-  let node: Node = d.nodes().find(|node| node.mesh().is_some()).unwrap();
-  let transform = Matrix4::from(node.transform().matrix());
-  let inverse_transform = transform.inverse_transform().unwrap();
-  println!("glb {:?}", path);
-  for mesh in d.meshes() {
+#[derive(Debug, Default)]
+struct VisitState {
+  b: Vec<buffer::Data>,
+  state: State,
+  interesting_state: State,
+  bounding_boxes: Vec<BoundingBox>,
+  print: bool,
+  interesting_map: HashMap<String, MyMeshData>,
+}
+
+fn visit_node(
+  visit_state: &mut VisitState,
+  node: Node,
+  parent_transform: Trans,
+  parent_inverse_transform: Trans,
+) {
+  let node_transform = Matrix4::from(node.transform().matrix());
+  let node_inverse_transform = node_transform.inverse_transform().unwrap();
+  let transform = parent_transform.concat(&node_transform);
+  let inverse_transform = parent_inverse_transform.concat(&node_inverse_transform);
+  if let Some(mesh) = node.mesh() {
     let name_opt = mesh.name();
     let interesting_name = name_opt.and_then(|name| {
       if name.starts_with("interesting") {
@@ -102,8 +115,10 @@ pub fn from_gltf(path: &Path, print: bool) -> MyMesh {
     });
     let mut interesting_state = State::default();
     for primitive in mesh.primitives() {
-      bounding_boxes.push(primitive.bounding_box().clone());
-      let reader = primitive.reader(|buffer| Some(&b[buffer.index()]));
+      visit_state
+        .bounding_boxes
+        .push(primitive.bounding_box().clone());
+      let reader = primitive.reader(|buffer| Some(&visit_state.b[buffer.index()]));
       let mut vertex = {
         let iter = reader.read_positions().unwrap_or_else(|| {
           panic!(
@@ -154,7 +169,7 @@ pub fn from_gltf(path: &Path, print: bool) -> MyMesh {
           &mut index.clone(),
         );
       }
-      if print {
+      if visit_state.print {
         println!(
           "- mesh Primitive {:?} #{} v {:?} i {:?}",
           mesh.name(),
@@ -163,7 +178,7 @@ pub fn from_gltf(path: &Path, print: bool) -> MyMesh {
           index.len()
         );
       }
-      state.collect(
+      visit_state.state.collect(
         &mut vertex,
         &mut normals,
         &mut tex,
@@ -173,7 +188,7 @@ pub fn from_gltf(path: &Path, print: bool) -> MyMesh {
     }
     if let Some(interesting_name) = interesting_name {
       let interesting_mesh_data = interesting_state.build_mesh_data(transform, inverse_transform);
-      if print {
+      if visit_state.print {
         println!(
           "part {:?} vertices {:?} indices {:?}",
           interesting_name.to_string(),
@@ -181,9 +196,26 @@ pub fn from_gltf(path: &Path, print: bool) -> MyMesh {
           interesting_mesh_data.index.len()
         );
       }
-      interesting_map.insert(interesting_name.to_string(), interesting_mesh_data);
+      visit_state
+        .interesting_map
+        .insert(interesting_name.to_string(), interesting_mesh_data);
     }
   }
+  for child_node in node.children() {
+    visit_node(visit_state, child_node, transform, inverse_transform);
+  }
+}
+
+pub fn from_gltf(path: &Path, print: bool) -> MyMesh {
+  println!("glb {:?}", path);
+  let (d, b, _i) = gltf::import(path).unwrap();
+  let mut state = State::default();
+  let mut bounding_boxes = vec![];
+  let mut interesting_map: HashMap<String, MyMeshData> = HashMap::new();
+
+  let default_scene = d.default_scene();
+
+  for mesh in d.meshes() {}
   // let (translation, rotation, scale) = node.transform().decomposed();
   // println!("t {:?} r {:?} s {:?}", translation, rotation, scale);
   let mut res = state.build_mesh(interesting_map, transform, print);
