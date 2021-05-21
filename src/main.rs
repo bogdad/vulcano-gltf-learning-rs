@@ -239,7 +239,7 @@ fn main() {
   let settings = Settings {
     sky_enabled: true,
     box_enabled: true,
-    dog_enabled: true,
+    dog_enabled: false,
     letters_enabled: true,
     triangle_enabled: true,
     lap_enabled: true,

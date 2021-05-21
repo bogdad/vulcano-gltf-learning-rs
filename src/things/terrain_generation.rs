@@ -3,7 +3,7 @@
 
 use crate::Model;
 use cgmath::prelude::*;
-use cgmath::{Matrix4, Point2, Point3, Rad, Vector3};
+use cgmath::{Matrix4, One, Point2, Point3, Rad, Vector3};
 use genmesh::{MapToVertices, Neighbors, Polygon, Quad, Triangle, Triangulate, Vertices};
 use mint::Vector3 as MintVector3;
 use rand_distr::{Distribution, UnitSphere};
@@ -433,6 +433,7 @@ pub struct TerrainModel {
 }
 
 pub fn execute(
+  scale: f32,
   sub_division: i32,
   mesh_size: i32,
   x: f32,
@@ -446,7 +447,7 @@ pub fn execute(
     grid_gen(sub_division, mesh_size, oleft, oright, otop, obottom);
   let vertex: Vec<Point3<f32>> = verts
     .iter()
-    .map(|v| Point3::new(v.position.0, v.position.1, v.position.2))
+    .map(|v| Point3::new(v.position.0, v.position.2 * scale, v.position.1))
     .collect();
 
   let triangles: Vec<Triangle<usize>> = faces
@@ -469,18 +470,19 @@ pub fn execute(
     .vertices()
     .map(|v| v as u32)
     .collect();
-  let transform = <Matrix4<f32> as One>::one();
 
   let tex = (0..vertex.len())
     .map(|_i| Point2::new(-1.0, -1.0))
     .collect();
   let tex_offset = (0..vertex.len()).map(|_i| Point2::new(0, 0)).collect();
+  let transform = <Matrix4<f32> as One>::one();
 
-  let mut mesh = MyMesh::new(vertex, tex, tex_offset, normals, index, transform, true);
+  let mut mesh = MyMesh::new(vertex, tex, tex_offset, normals, index, transform, false);
   mesh.update_transform_2(
     Vector3::new(x, 0.0, z),
-    Matrix4::from_angle_x(Rad(std::f32::consts::FRAC_PI_2)),
-    [1.0, 1.0, 15.0],
+    <Matrix4<f32> as Transform<Point3<f32>>>::one(),
+    //Matrix4::from_angle_x(Rad(std::f32::consts::FRAC_PI_2)),
+    [1.0, 1.0, 1.0],
   );
   TerrainModel {
     mesh: mesh,

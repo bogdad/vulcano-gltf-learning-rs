@@ -8,7 +8,7 @@ use vulkano::pipeline::GraphicsPipelineAbstract;
 use std::path::Path;
 use std::sync::Arc;
 
-use crate::render::mymesh::from_gltf;
+use crate::render::gltfimporter::from_gltf;
 use crate::render::scene::Scene;
 use crate::utils::{Normal, Vertex};
 

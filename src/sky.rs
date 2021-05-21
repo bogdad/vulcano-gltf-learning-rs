@@ -1,4 +1,4 @@
-use cgmath::{Point3, Vector2, Vector3, Matrix4, One};
+use cgmath::{Point3, Vector2, Vector3, Matrix4, One, Rad};
 use vulkano::device::Device;
 
 use futures::executor::block_on;
@@ -16,6 +16,17 @@ use crate::settings::Settings;
 use crate::things::terrain_generation;
 use crate::things::terrain_generation::TerrainModel;
 use crate::things::lap::LapMesh;
+
+impl Sky {
+  const X: f32 = 100.0;
+  const Z: f32 = 100.0;
+  const X_ROWS: usize = 9;
+  const Z_ROWS: usize = 9;
+  const MX: usize = 5;
+  const MZ: usize = 5;
+  const DETAIL: i32 = 90;
+  const SCALE: f32 = 30.0;
+}
 
 fn xindex(base: f32, step: isize) -> f32 {
   Sky::X * (step as f32) + base
@@ -130,6 +141,7 @@ impl CacheCell {
           let vtop = get_border_vec(otop, |tm| tm.terrain.bottom.clone());
           let vbottom = get_border_vec(obottom, |tm| tm.terrain.top.clone());
           let mut terrain_model = terrain_generation::execute(
+            Sky::SCALE,
             Sky::DETAIL,
             Sky::X as i32,
             x + Sky::X / 2.0,
@@ -139,9 +151,10 @@ impl CacheCell {
             vtop,
             vbottom,
           );
+
           let mut mesh = lap_mesh.mesh;
           mesh.update_transform_2(
-            Vector3::<f32>::new(x, -3.0, z),
+            Vector3::<f32>::new(0.0, -300.0, 0.0),
             Matrix4::one(),
             [1.0, 1.0, 1.0],
           );
@@ -227,14 +240,6 @@ pub struct Sky {
 }
 
 impl Sky {
-  const X: f32 = 40.0;
-  const Z: f32 = 40.0;
-  const X_ROWS: usize = 9;
-  const Z_ROWS: usize = 9;
-  const MX: usize = 5;
-  const MZ: usize = 5;
-  const DETAIL: i32 = 9;
-
   pub fn new(settings: Settings, device: &Arc<Device>, x: f32, z: f32) -> Self {
     let mut cache: Vec<CacheCell> = vec![];
     for _i in 0..(Sky::X_ROWS * Sky::Z_ROWS) {

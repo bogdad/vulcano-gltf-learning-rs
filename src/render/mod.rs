@@ -1,3 +1,4 @@
+pub mod gltfimporter;
 pub mod model;
 pub mod mymesh;
 pub mod scene;

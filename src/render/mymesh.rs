@@ -3,27 +3,24 @@ use vulkano::device::Device;
 
 use genmesh::generators::{Cube, IndexedPolygon};
 use genmesh::{MapToVertices, Neighbors, Triangle, Triangulate, Vertices};
-use gltf::scene::Node;
 
 use mint::Vector3 as MintVector3;
 
 //use cgmath::prelude::*;
-use cgmath::Transform;
+use cgmath::{Decomposed, Transform};
 use cgmath::{InnerSpace, Matrix3, Matrix4, Point2, Point3, Quaternion, SquareMatrix, Vector3};
 
 use itertools::izip;
 
 use std::collections::HashMap;
 use std::ops::MulAssign;
-use std::path::Path;
-use std::sync::Arc;
 
 use crate::render::model::Model;
 use crate::utils::{Normal, Vertex};
 
 #[derive(Default, Debug, Clone)]
 pub struct InterestingMeshData {
-  map: HashMap<String, MyMeshData>,
+  pub map: HashMap<String, MyMeshData>,
 }
 
 #[derive(Debug, Clone)]
@@ -97,6 +94,10 @@ impl MyMesh {
     mesh
   }
 
+  pub fn reset_transform(&mut self) {
+    self.data.transform = Matrix4::one();
+  }
+
   pub fn get_buffers(&self, device: &Arc<Device>) -> Model {
     let vertices_vec: Vec<Vertex> = izip!(
       self.data.vertex.iter(),
@@ -125,13 +126,6 @@ impl MyMesh {
 
     let indices = self.data.index.iter().cloned();
 
-    /*println!(
-      "mesh properties: vertices {} normals {} indices {}",
-      vertices_vec.len(),
-      normals_vec.len(),
-      self.index.len()
-    );*/
-
     let vertex_buffer =
       CpuAccessibleBuffer::from_iter(device.clone(), BufferUsage::all(), false, vertices).unwrap();
     let index_buffer =
@@ -142,7 +136,7 @@ impl MyMesh {
     Model::new(vertex_buffer, normals_buffer, index_buffer)
   }
 
-  fn _translation_decomposed(&self) -> (Vector3<f32>, Quaternion<f32>, [f32; 3]) {
+  pub fn translation_decomposed(&self) -> (Vector3<f32>, Quaternion<f32>, [f32; 3]) {
     let m = &self.data.transform;
     let translation = Vector3::new(m[3][0], m[3][1], m[3][2]);
     let mut i = Matrix3::new(
@@ -159,18 +153,6 @@ impl MyMesh {
     (translation, r, scale)
   }
 
-  fn _update_transform(
-    &mut self,
-    translation: Vector3<f32>,
-    rotation: Quaternion<f32>,
-    scale: [f32; 3],
-  ) {
-    let t = Matrix4::from_translation(translation);
-    let r = Matrix4::from(rotation);
-    let s = Matrix4::from_nonuniform_scale(scale[0], scale[1], scale[2]);
-    self.data.transform = t * r * s;
-  }
-
   pub fn update_transform_2(
     &mut self,
     translation: Vector3<f32>,
@@ -179,7 +161,12 @@ impl MyMesh {
   ) {
     let t = Matrix4::from_translation(translation);
     let s = Matrix4::from_nonuniform_scale(scale[0], scale[1], scale[2]);
-    self.data.transform = t * rotation * s;
+    let tr = t * rotation * s;
+    let inverse_transform = tr.inverse_transform().unwrap_or_else(|| {
+      panic!("inverse failed for matrix {:?}", tr);
+    });
+    self.data.transform.concat_self(&tr);
+    self.data.inverse_transform.concat_self(&inverse_transform);
   }
 
   pub fn printstats(&self) {
@@ -240,7 +227,7 @@ impl MyMesh {
   }
 
   pub fn add_bounding_box(&mut self, min: [f32; 3], max: [f32; 3]) {
-    println!("adding bounding box {:?} {:?}", min, max);
+    //println!("adding bounding box {:?} {:?}", min, max);
     let cube = Cube::new();
     let mut vertex: Vec<Point3<f32>> = cube
       .clone()
@@ -304,17 +291,7 @@ impl MyMesh {
 
 impl MyMeshData {
   pub fn add_consume(&mut self, other: &mut MyMeshData) {
-    /*
-    ---
-    I want to transform local vertices of the other mesh, so that when presented with
-    my transformation matrix other vertices have the same global position as they had before.
-    ---
-    Gl = TransformB x VertB
-    Gl = TransformA x VertX
-    TransformA x VertX = TransformB x VertB
-    VertX = InvA x TransformB x VertB
-    */
-    let mult_mat = self.inverse_transform.concat(&other.transform);
+    let mult_mat = &other.transform;
     for vert in other.vertex.iter_mut() {
       *vert = mult_mat.transform_point(*vert);
     }
@@ -380,155 +357,38 @@ fn _from_matrix(mat: Matrix3<f32>) -> Quaternion<f32> {
   }
 }
 
-pub fn from_gltf(path: &Path, print: bool) -> MyMesh {
-  let (d, b, _i) = gltf::import(path).unwrap();
-  let mut all_vertex = vec![];
-  let mut all_normals = vec![];
-  let mut all_tex = vec![];
-  let mut all_tex_offset = vec![];
-  let mut all_index = vec![];
-  let mut bounding_boxes = vec![];
-  let mut last_index = 0;
-  let mut interesting_map: HashMap<String, MyMeshData> = HashMap::new();
-  let node: Node = d.nodes().find(|node| node.mesh().is_some()).unwrap();
-  let transform = Matrix4::from(node.transform().matrix());
-  let inverse_transform = transform.inverse_transform().unwrap();
-  println!("glb {:?}", path);
-  for mesh in d.meshes() {
-    let name_opt = mesh.name();
-    let interesting_name = name_opt.and_then(|name| {
-      if name.starts_with("interesting") {
-        let split: Vec<&str> = name.split("_").collect();
-        if split.len() > 1 {
-          Some(split[1])
-        } else {
-          None
-        }
-      } else {
-        None
-      }
-    });
-    let mut interesting_vertex = vec![];
-    let mut interesting_normals = vec![];
-    let mut interesting_tex = vec![];
-    let mut interesting_tex_offset = vec![];
-    let mut interesting_index = vec![];
-    let mut last_interesting_index = 0;
-    for primitive in mesh.primitives() {
-      //for (semantic, _) in primitive.attributes() {
-      //  println!("-- {:?}", semantic);
-      //}
-      //println!("{:?}", primitive.bounding_box());
-      bounding_boxes.push(primitive.bounding_box().clone());
-      let reader = primitive.reader(|buffer| Some(&b[buffer.index()]));
-      let mut vertex = {
-        let iter = reader.read_positions().unwrap_or_else(|| {
-          panic!(
-            "primitives must have the POSITION attribute (mesh: {}, primitive: {})",
-            mesh.index(),
-            primitive.index()
-          )
-        });
+#[cfg(test)]
+mod test {
+  use crate::render::mymesh::MyMesh;
+  use crate::things::primitives::PrimitiveCube;
+  use cgmath::{Matrix4, One, Vector3};
 
-        iter
-          .map(|arr| {
-            //println!("p {:?}", arr);
-            Point3::from(arr)
-          })
-          .collect::<Vec<_>>()
-      };
-      let mut tex: Vec<Point2<f32>> = (0..vertex.len())
-        .map(|_i| Point2::new(-1.0, -1.0))
-        .collect();
+  fn test_mesh() -> MyMesh {
+    let mesh = PrimitiveCube::new(1.0, 1.0, 1.0, (1.0, 4.0, 9.0));
+    mesh.mesh
+  }
 
-      let mut tex_offset: Vec<Point2<i32>> =
-        (0..vertex.len()).map(|_i| Point2::new(0, 0)).collect();
-      let mut normals = {
-        let iter = reader.read_normals().unwrap_or_else(|| {
-          panic!(
-            "primitives must have the NORMALS attribute (mesh: {}, primitive: {})",
-            mesh.index(),
-            primitive.index()
-          )
-        });
-        iter
-          .map(|arr| {
-            // println!("n {:?}", arr);
-            Point3::from(arr)
-          })
-          .collect::<Vec<_>>()
-      };
-      let mut index = reader
-        .read_indices()
-        .map(|read_indices| read_indices.into_u32().collect::<Vec<_>>())
-        .unwrap();
-      if interesting_name.is_some() {
-        interesting_vertex.append(&mut vertex.clone());
-        interesting_normals.append(&mut normals.clone());
-        interesting_tex.append(&mut tex.clone());
-        interesting_tex_offset.append(&mut tex_offset.clone());
-        let mut index_clone = index.clone();
-        for ind in index_clone.iter_mut() {
-          *ind = last_interesting_index + *ind;
-        }
-        interesting_index.append(&mut index_clone);
-        last_interesting_index += vertex.len() as u32;
-      }
-      println!(
-        "- mesh Primitive {:?} #{} v {:?} i {:?}",
-        mesh.name(),
-        primitive.index(),
-        vertex.len(),
-        index.len()
-      );
-      all_normals.append(&mut normals);
-      all_tex.append(&mut tex);
-      all_tex_offset.append(&mut tex_offset);
-      for ind in index.iter_mut() {
-        *ind = last_index + *ind;
-      }
-      all_index.append(&mut index);
-      last_index += vertex.len() as u32;
-      all_vertex.append(&mut vertex);
-    }
-    if let Some(interesting_name) = interesting_name {
-      let interesting_mesh_data = MyMeshData {
-        vertex: interesting_vertex,
-        normals: interesting_normals,
-        tex: interesting_tex,
-        tex_offset: interesting_tex_offset,
-        index: interesting_index,
-        transform,
-        inverse_transform,
-      };
-      println!(
-        "part {:?} vertices {:?} indices {:?}",
-        interesting_name.to_string(),
-        interesting_mesh_data.vertex.len(),
-        interesting_mesh_data.index.len()
-      );
-      interesting_map.insert(interesting_name.to_string(), interesting_mesh_data);
-    }
+  #[test]
+  pub fn test_identity_transform() {
+    let mut cube = test_mesh();
+    println!("cube {:?}", cube.data.transform);
+    let (t, r, s) = cube.translation_decomposed();
+    assert_eq!(t, Vector3::new(1.0, 4.0, 9.0));
+    assert_eq!(s, [1.0, 1.0, 1.0]);
+    cube.update_transform_2(Vector3::new(0.0, 0.0, 0.0), Matrix4::one(), [1.0, 1.0, 1.0]);
+    // check nothing changed
+    assert_eq!(t, Vector3::new(1.0, 4.0, 9.0));
+    assert_eq!(s, [1.0, 1.0, 1.0]);
   }
-  // let (translation, rotation, scale) = node.transform().decomposed();
-  // println!("t {:?} r {:?} s {:?}", translation, rotation, scale);
-  let interesting = InterestingMeshData {
-    map: interesting_map,
-  };
-  let mut res = MyMesh::new_interesting(
-    all_vertex,
-    all_tex,
-    all_tex_offset,
-    all_normals,
-    all_index,
-    transform,
-    print,
-    interesting,
-  );
-  if print {
-    for bounding_box in bounding_boxes {
-      res.add_bounding_box(bounding_box.min, bounding_box.max);
-    }
+
+  #[test]
+  pub fn test_translate_transform() {
+    let mut cube = test_mesh();
+    println!("cube {:?}", cube.data.transform);
+    cube.update_transform_2(Vector3::new(5.0, 6.0, 7.0), Matrix4::one(), [1.0, 1.0, 1.0]);
+    // check nothing changed
+    let (t, r, s) = cube.translation_decomposed();
+    assert_eq!(t, Vector3::new(1.0 + 5.0, 4.0 + 6.0, 9.0 + 7.0));
+    assert_eq!(s, [1.0, 1.0, 1.0]);
   }
-  res
 }

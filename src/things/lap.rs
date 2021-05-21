@@ -1,9 +1,9 @@
 use vulkano::device::Device;
 
-use cgmath::{Matrix4, Transform, Vector3};
+use cgmath::{Matrix4, Rad, Transform, Vector3};
 
+use crate::render::gltfimporter::from_gltf;
 use crate::render::model::Model;
-use crate::render::mymesh::from_gltf;
 use crate::render::mymesh::MyMesh;
 
 use std::path::Path;
@@ -21,21 +21,14 @@ pub struct Lap {
 
 impl LapMesh {
   pub fn new() -> Self {
-    println!("lap: before");
-    let mut mesh = from_gltf(Path::new("models/lep.glb"), true);
-    println!("lap: before update");
+    let mut mesh = from_gltf(Path::new("models/lep.glb"), false);
+    mesh.reset_transform();
     mesh.update_transform_2(
-      Vector3::<f32>::new(-15.0, -3.0, 0.0),
+      Vector3::<f32>::new(0.0, 0.0, 0.0),
       Matrix4::one(),
-      [1.0, 1.0, 1.0],
+      //Matrix4::from_angle_y(Rad(std::f32::consts::FRAC_PI_2)),
+      [1.0 / 500.0, 1.0 / 500.0, 1.0 / 500.0],
     );
-    mesh.map_vertex(|v| {
-      v.x = -v.x / 500.0;
-      v.y = v.y / 500.0;
-      v.z = v.z / 500.0;
-      std::mem::swap(&mut v.y, &mut v.x);
-    });
-    println!("lap: after");
     LapMesh { mesh }
   }
 }
