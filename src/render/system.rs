@@ -20,8 +20,9 @@ use std::convert::TryInto;
 use std::iter;
 use std::sync::Arc;
 
-use crate::render::model::ModelScene;
+use crate::render::model::Model;
 use crate::render::scene::MergedScene;
+use crate::render::scene::Scene;
 use crate::render::skybox::SkyboxCubemap;
 use crate::render::textures::Textures;
 use crate::shaders;
@@ -121,7 +122,7 @@ impl System {
   pub fn main_set(
     &self,
     proj: shaders::main::vs::ty::Data,
-    models: &[ModelScene],
+    scenes: Vec<&Scene>,
     camera_position: Point3<f32>,
   ) -> Arc<dyn DescriptorSet + Sync + Send> {
     let uniform_buffer_subbuffer = {
@@ -130,16 +131,16 @@ impl System {
     };
 
     let mut all_scene = MergedScene::default();
-    for model in models {
+    for scene in scenes {
       all_scene
         .point_lights
-        .extend(model.1.point_lights.iter().map(|arc| arc.as_ref()));
+        .extend(scene.point_lights.iter().map(|arc| arc.as_ref()));
       all_scene
         .directional_lights
-        .extend(model.1.directional_lights.iter().map(|arc| arc.as_ref()));
+        .extend(scene.directional_lights.iter().map(|arc| arc.as_ref()));
       all_scene
         .spot_lights
-        .extend(model.1.spot_lights.iter().map(|arc| arc.as_ref()));
+        .extend(scene.spot_lights.iter().map(|arc| arc.as_ref()));
     }
 
     let environment_buffer_subbuffer = {

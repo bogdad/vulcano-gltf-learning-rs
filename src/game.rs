@@ -147,7 +147,7 @@ impl Game {
 
     let set = self.system.main_set(
       self.camera.proj(&self.graph),
-      &self.world.get_models(),
+      self.world.get_scenes(),
       self.camera.pos,
     );
     let set_skybox = self.system.skybox_set(self.camera.proj_skybox(&self.graph));
@@ -187,13 +187,11 @@ impl Game {
       model.draw_indexed(&mut builder, self.system.pipeline.clone(), set.clone());
     }
     for model in self.world.get_models() {
-      model
-        .0
-        .draw_indexed(&mut builder, self.system.pipeline.clone(), set.clone());
+      model.draw_indexed(&mut builder, self.system.pipeline.clone(), set.clone());
     }
     builder.next_subpass(SubpassContents::Inline).unwrap();
     for model in self.world.get_models_skybox() {
-      model.0.draw_indexed(
+      model.draw_indexed(
         &mut builder,
         self.system.pipeline_skybox.clone(),
         set_skybox.clone(),

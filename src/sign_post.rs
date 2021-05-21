@@ -25,7 +25,7 @@ impl SignPost {
     SignPost { model }
   }
 
-  pub fn get_model(&self) -> &Model {
-    &self.model
+  pub fn get_model(&self) -> Model {
+    self.model.clone()
   }
 }

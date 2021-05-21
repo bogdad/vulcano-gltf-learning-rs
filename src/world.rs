@@ -4,7 +4,8 @@ use winit::event::{KeyboardInput, VirtualKeyCode};
 use std::fmt;
 
 use crate::executor::Executor;
-use crate::render::model::ModelScene;
+use crate::render::model::Model;
+use crate::render::scene::Scene;
 use crate::sign_post::SignPost;
 use crate::sky::Sky;
 use crate::things::primitives::PrimitiveSkyBox;
@@ -51,7 +52,7 @@ impl World {
     graph: &Graph,
     sign_posts: Vec<SignPost>,
   ) -> Self {
-    let sky = Sky::new(&graph.device, 0.0, 0.0);
+    let sky = Sky::new(settings.clone(), &graph.device, 0.0, 0.0);
     let skybox = PrimitiveSkyBox::new(&graph.device);
     World {
       settings,
@@ -89,20 +90,28 @@ impl World {
     }
   }
 
-  pub fn get_models(&self) -> Vec<ModelScene> {
+  pub fn get_scenes(&self) -> Vec<&Scene> {
+    let mut res = vec![];
+    if self.settings.sky_enabled {
+      res.extend(self.sky.get_scene());
+    }
+    res
+  }
+
+  pub fn get_models(&self) -> Vec<Model> {
     let mut res = vec![];
     if self.settings.sky_enabled {
       res.extend(self.sky.get_current());
     }
     if self.settings.letters_enabled {
       for sign_post in &self.sign_posts {
-        res.push((sign_post.get_model().clone(), Default::default()));
+        res.push(sign_post.get_model());
       }
     }
     res
   }
 
-  pub fn get_models_skybox(&self) -> Vec<ModelScene> {
+  pub fn get_models_skybox(&self) -> Vec<&Model> {
     let mut res = vec![];
     res.extend(self.skybox.get_model());
     res

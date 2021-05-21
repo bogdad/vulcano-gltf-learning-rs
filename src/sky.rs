@@ -1,4 +1,4 @@
-use cgmath::{Point3, Vector2};
+use cgmath::{Point3, Vector2, Vector3, Matrix4, One};
 use vulkano::device::Device;
 
 use futures::executor::block_on;
@@ -12,8 +12,10 @@ use crate::executor::Executor;
 use crate::render::model::Model;
 use crate::render::scene::Scene;
 use crate::shaders::main::fs;
+use crate::settings::Settings;
 use crate::things::terrain_generation;
 use crate::things::terrain_generation::TerrainModel;
+use crate::things::lap::LapMesh;
 
 fn xindex(base: f32, step: isize) -> f32 {
   Sky::X * (step as f32) + base
@@ -55,9 +57,15 @@ fn crop(x: isize, bound: usize) -> Option<usize> {
 
 type ArcCacheCellInner = Arc<RwLock<CacheCellInner>>;
 
+struct SkySegment {
+  terrain: TerrainModel,
+  model: Model,
+  scene: Scene,
+}
+
 #[derive(Default)]
 struct CacheCellInner {
-  model: Option<TerrainModel>,
+  model: Option<SkySegment>,
 }
 
 #[derive(Default)]
@@ -68,14 +76,14 @@ struct CacheCell {
 
 fn get_border_vec(
   cell_opt: Option<ArcCacheCellInner>,
-  f: fn(&TerrainModel) -> Vec<f32>,
+  f: fn(&SkySegment) -> Vec<f32>,
 ) -> Option<Vec<f32>> {
   if cell_opt.is_none() {
     return None;
   }
   let cell = cell_opt.unwrap();
   let read = cell.read();
-  let tm: Option<&TerrainModel> = ((*read).model).as_ref();
+  let tm: Option<&SkySegment> = ((*read).model).as_ref();
   Some(f(&tm.unwrap()))
 }
 
@@ -88,6 +96,7 @@ impl CacheCell {
     &mut self,
     executor: &Executor,
     device: &Arc<Device>,
+    lap_mesh: &LapMesh,
     x: f32,
     z: f32,
     oleft: Option<ArcCacheCellInner>,
@@ -107,6 +116,7 @@ impl CacheCell {
 
     let weak_device = Arc::downgrade(device);
     let weak_self_inner = Arc::downgrade(&self.inner);
+    let lap_mesh: LapMesh = lap_mesh.clone();
     let fut = async move {
       // println!("generated ({:?},{:?})", x, z);
       if let Some(device) = weak_device.upgrade() {
@@ -115,12 +125,11 @@ impl CacheCell {
           if locked.model.is_some() {
             return;
           }
-          let vleft = get_border_vec(oleft, |tm| tm.right.clone());
-          let vright = get_border_vec(oright, |tm| tm.left.clone());
-          let vtop = get_border_vec(otop, |tm| tm.bottom.clone());
-          let vbottom = get_border_vec(obottom, |tm| tm.top.clone());
-          let res = terrain_generation::execute(
-            &device,
+          let vleft = get_border_vec(oleft, |tm| tm.terrain.right.clone());
+          let vright = get_border_vec(oright, |tm| tm.terrain.left.clone());
+          let vtop = get_border_vec(otop, |tm| tm.terrain.bottom.clone());
+          let vbottom = get_border_vec(obottom, |tm| tm.terrain.top.clone());
+          let mut terrain_model = terrain_generation::execute(
             8,
             Sky::X as i32,
             x + Sky::X / 2.0,
@@ -130,7 +139,21 @@ impl CacheCell {
             vtop,
             vbottom,
           );
-          locked.model = Some(res);
+          let mut mesh = lap_mesh.mesh;
+          mesh.update_transform_2(
+            Vector3::<f32>::new(x, -3.0, z),
+            Matrix4::one(),
+            [1.0, 1.0, 1.0],
+          );
+          //terrain_model.mesh.add_consume(&mut mesh);
+          mesh.add_consume(&mut terrain_model.mesh);
+          let model = mesh.get_buffers(&device);
+          let sky_segment = SkySegment {
+            terrain: terrain_model,
+            model: model,
+            scene: Scene::default(),
+          };
+          locked.model = Some(sky_segment);
         }
       }
     };
@@ -153,6 +176,7 @@ impl CacheCell {
     &mut self,
     executor: &Executor,
     device: &Arc<Device>,
+    lap_mesh: &LapMesh,
     x: f32,
     z: f32,
     oleft: Option<ArcCacheCellInner>,
@@ -167,7 +191,7 @@ impl CacheCell {
       }
     }
     println!("blocking on sky");
-    self.spawn_region(executor, device, x, z, oleft, oright, otop, obottom);
+    self.spawn_region(executor, device, lap_mesh, x, z, oleft, oright, otop, obottom);
     self.block();
   }
 
@@ -183,13 +207,15 @@ impl CacheCell {
     )
   }
 
-  fn model(&self) -> Option<TerrainModel> {
+  fn model(&self) -> Option<Model> {
     let read_locked = self.inner.read();
-    read_locked.model.clone()
+    let sky_segment = read_locked.model.as_ref();
+    sky_segment.map(|m| m.model.clone())
   }
 }
 
 pub struct Sky {
+  settings: Settings,
   device: Arc<Device>,
   cache: Vec<CacheCell>,
   x: Vector2<f32>,
@@ -197,17 +223,19 @@ pub struct Sky {
   // last seen camera position
   c: Vector2<f32>,
   ordered_cells: Vec<(isize, isize)>,
+  scene: Scene,
+  lap_mesh: LapMesh,
 }
 
 impl Sky {
-  const X: f32 = 4.0;
-  const Z: f32 = 4.0;
-  const X_ROWS: usize = 39;
-  const Z_ROWS: usize = 39;
-  const MX: usize = 19;
-  const MZ: usize = 19;
+  const X: f32 = 40.0;
+  const Z: f32 = 40.0;
+  const X_ROWS: usize = 9;
+  const Z_ROWS: usize = 9;
+  const MX: usize = 5;
+  const MZ: usize = 5;
 
-  pub fn new(device: &Arc<Device>, x: f32, z: f32) -> Self {
+  pub fn new(settings: Settings, device: &Arc<Device>, x: f32, z: f32) -> Self {
     let mut cache: Vec<CacheCell> = vec![];
     for _i in 0..(Sky::X_ROWS * Sky::Z_ROWS) {
       cache.push(CacheCell::default());
@@ -238,13 +266,36 @@ impl Sky {
       a.1.cmp(&b.1)
     });
     //println!("odered ordered {:?}", ordered);
+    let scene = Scene {
+      point_lights: vec![
+        Arc::new(fs::ty::PointLight {
+          position:   [-100.0, -100.0, -1000.0],
+          color: [1.0, 1.0, 1.0],
+          intensity: 1000.0 * 1000.0,
+          ..Default::default()
+        }),
+        Arc::new(fs::ty::PointLight {
+          position: [-13.0, 10.0, -14.0],
+          color: [1.0, 1.0, 0.0],
+          intensity: 400.0,
+          ..Default::default()
+        })],
+      directional_lights: vec![],
+      spot_lights: vec![],
+    };
+
+    let lap_mesh = LapMesh::new();
+
     Sky {
+      settings: settings,
       device: Arc::clone(device),
       cache,
       x: Vector2::new(x, x + Sky::X),
       z: Vector2::new(z, z + Sky::Z),
       c: Vector2::new(0.0, 0.0),
       ordered_cells: ordered,
+      scene,
+      lap_mesh,
     }
   }
 
@@ -268,6 +319,7 @@ impl Sky {
     self.cache[giiu(0, 0)].create_block(
       executor,
       &self.device,
+      &self.lap_mesh,
       self.x.x,
       self.z.x,
       None,
@@ -296,6 +348,7 @@ impl Sky {
           self.cache[tii(try_cell)].spawn_region(
             executor,
             &self.device,
+            &self.lap_mesh,
             xx,
             zz,
             oleft,
@@ -348,37 +401,22 @@ impl Sky {
     }
   }
 
-  pub fn get_current(&self) -> Vec<(Model, Scene)> {
-    let mut res: Vec<(Model, Scene)> = vec![];
-    let mut added = vec![self.cache[giiu(0, 0)]
-      .model()
-      .map(|tm| tm.model_scene())
-      .as_ref()
-      .unwrap()
-      .clone()];
-    res.append(&mut added);
+  pub fn get_scene(&self) -> Vec<&Scene> {
+    if self.settings.sky_enabled {
+      vec![&self.scene]
+    } else {
+      vec![]
+    }
+  }
+
+  pub fn get_current(&self) -> Vec<Model> {
+    let mut res = vec![];
     for (i, j) in &self.ordered_cells {
-      if i.abs() + j.abs() < 10 {
-        if let Some(elem) = &self.cache[giiu(*i, *j)].model().map(|tm| tm.model_scene()) {
-          res.push(elem.clone());
+      if i.abs() + j.abs() < 3 {
+        if let Some(elem) = self.cache[giiu(*i, *j)].model() {
+          res.push(elem);
         };
       }
-    }
-    if res.len() > 0 {
-      res[0].1.point_lights = vec![
-        Arc::new(fs::ty::PointLight {
-          position: [-100.0, -100.0, -1000.0],
-          color: [1.0, 1.0, 1.0],
-          intensity: 1000.0 * 1000.0,
-          ..Default::default()
-        }),
-        Arc::new(fs::ty::PointLight {
-          position: [-13.0, 10.0, -14.0],
-          color: [1.0, 1.0, 0.0],
-          intensity: 400.0,
-          ..Default::default()
-        }),
-      ];
     }
     res
   }
@@ -399,7 +437,7 @@ impl Sky {
 }
 
 impl Actor for Sky {
-  fn get_model(&self, _device: &Arc<Device>) -> Vec<(Model, Scene)> {
+  fn get_model(&self, _device: &Arc<Device>) -> Vec<Model> {
     self.get_current()
   }
 }

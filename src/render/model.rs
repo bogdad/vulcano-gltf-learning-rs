@@ -8,7 +8,7 @@ use vulkano::pipeline::GraphicsPipelineAbstract;
 use std::path::Path;
 use std::sync::Arc;
 
-use crate::render::mymesh::MyMesh;
+use crate::render::mymesh::from_gltf;
 use crate::render::scene::Scene;
 use crate::utils::{Normal, Vertex};
 
@@ -18,8 +18,6 @@ pub struct Model {
   normals: Arc<CpuAccessibleBuffer<[Normal]>>,
   index: Arc<CpuAccessibleBuffer<[u32]>>,
 }
-
-pub type ModelScene = (Model, Scene);
 
 impl Model {
   pub fn new(
@@ -55,6 +53,6 @@ impl Model {
   }
 
   pub fn from_gltf(path: &Path, device: &Arc<Device>) -> Model {
-    MyMesh::from_gltf(path, false).get_buffers(device)
+    from_gltf(path, false).get_buffers(device)
   }
 }

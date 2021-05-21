@@ -13,6 +13,7 @@ use cgmath::{InnerSpace, Matrix3, Matrix4, Point2, Point3, Quaternion, SquareMat
 
 use itertools::izip;
 
+use std::collections::HashMap;
 use std::ops::MulAssign;
 use std::path::Path;
 use std::sync::Arc;
@@ -20,15 +21,26 @@ use std::sync::Arc;
 use crate::render::model::Model;
 use crate::utils::{Normal, Vertex};
 
-#[derive(Debug)]
+#[derive(Default, Debug, Clone)]
+pub struct InterestingMeshData {
+  map: HashMap<String, MyMeshData>,
+}
+
+#[derive(Debug, Clone)]
 pub struct MyMesh {
+  pub data: MyMeshData,
+  pub transform: Matrix4<f32>,
+  print: bool,
+  interesting: InterestingMeshData,
+}
+
+#[derive(Debug, Clone)]
+pub struct MyMeshData {
   pub vertex: Vec<Point3<f32>>,
   pub tex: Vec<Point2<f32>>,
   pub tex_offset: Vec<Point2<i32>>,
   pub normals: Vec<Point3<f32>>,
   pub index: Vec<u32>,
-  pub transform: Matrix4<f32>,
-  print: bool,
 }
 
 impl MyMesh {
@@ -41,7 +53,7 @@ impl MyMesh {
     transform: Matrix4<f32>,
     print: bool,
   ) -> MyMesh {
-    let mesh = MyMesh {
+    MyMesh::new_interesting(
       vertex,
       tex,
       tex_offset,
@@ -49,6 +61,32 @@ impl MyMesh {
       index,
       transform,
       print,
+      InterestingMeshData::default(),
+    )
+  }
+
+  pub fn new_interesting(
+    vertex: Vec<cgmath::Point3<f32>>,
+    tex: Vec<cgmath::Point2<f32>>,
+    tex_offset: Vec<cgmath::Point2<i32>>,
+    normals: Vec<cgmath::Point3<f32>>,
+    index: Vec<u32>,
+    transform: Matrix4<f32>,
+    print: bool,
+    interesting: InterestingMeshData,
+  ) -> MyMesh {
+    let data = MyMeshData {
+      vertex,
+      tex,
+      tex_offset,
+      normals,
+      index,
+    };
+    let mesh = MyMesh {
+      data,
+      transform,
+      print,
+      interesting: interesting,
     };
     if print {
       mesh.printstats();
@@ -56,109 +94,23 @@ impl MyMesh {
     mesh
   }
 
-  pub fn from_gltf(path: &Path, print: bool) -> MyMesh {
-    let (d, b, _i) = gltf::import(path).unwrap();
-    let mesh = d.meshes().next().unwrap();
-    let mut all_vertex = vec![];
-    let mut all_normals = vec![];
-    let mut all_tex = vec![];
-    let mut all_tex_offset = vec![];
-    let mut all_index = vec![];
-    let mut bounding_boxes = vec![];
-    let mut last_index = 0;
-    for primitive in mesh.primitives() {
-      println!("- Primitive #{}", primitive.index());
-      for (semantic, _) in primitive.attributes() {
-        println!("-- {:?}", semantic);
-      }
-      println!("{:?}", primitive.bounding_box());
-      bounding_boxes.push(primitive.bounding_box().clone());
-      let reader = primitive.reader(|buffer| Some(&b[buffer.index()]));
-      let mut vertex = {
-        let iter = reader.read_positions().unwrap_or_else(|| {
-          panic!(
-            "primitives must have the POSITION attribute (mesh: {}, primitive: {})",
-            mesh.index(),
-            primitive.index()
-          )
-        });
-
-        iter
-          .map(|arr| {
-            //println!("p {:?}", arr);
-            Point3::from(arr)
-          })
-          .collect::<Vec<_>>()
-      };
-      let mut tex = (0..vertex.len())
-        .map(|_i| Point2::new(-1.0, -1.0))
-        .collect();
-
-      let mut tex_offset = (0..vertex.len()).map(|_i| Point2::new(0, 0)).collect();
-      let mut normals = {
-        let iter = reader.read_normals().unwrap_or_else(|| {
-          panic!(
-            "primitives must have the NORMALS attribute (mesh: {}, primitive: {})",
-            mesh.index(),
-            primitive.index()
-          )
-        });
-        iter
-          .map(|arr| {
-            // println!("n {:?}", arr);
-            Point3::from(arr)
-          })
-          .collect::<Vec<_>>()
-      };
-      let index = reader
-        .read_indices()
-        .map(|read_indices| read_indices.into_u32().collect::<Vec<_>>());
-
-      all_normals.append(&mut normals);
-      all_tex.append(&mut tex);
-      all_tex_offset.append(&mut tex_offset);
-      let mut read_index = index.unwrap();
-      for ind in read_index.iter_mut() {
-        *ind = last_index + *ind;
-      }
-      all_index.append(&mut read_index);
-      last_index += vertex.len() as u32;
-      all_vertex.append(&mut vertex);
-    }
-    let node: Node = d.nodes().find(|node| node.mesh().is_some()).unwrap();
-    let transform = Matrix4::from(node.transform().matrix());
-    // let (translation, rotation, scale) = node.transform().decomposed();
-    // println!("t {:?} r {:?} s {:?}", translation, rotation, scale);
-    let mut res = MyMesh::new(
-      all_vertex,
-      all_tex,
-      all_tex_offset,
-      all_normals,
-      all_index,
-      transform,
-      print,
-    );
-    if print {
-      for bounding_box in bounding_boxes {
-        res.add_bounding_box(bounding_box.min, bounding_box.max);
-      }
-    }
-    res
-  }
-
   pub fn get_buffers(&self, device: &Arc<Device>) -> Model {
-    let vertices_vec: Vec<Vertex> =
-      izip!(self.vertex.iter(), self.tex.iter(), self.tex_offset.iter())
-        .map(|(pos, tex, tex_offset)| (self.transform.transform_point(*pos), tex, tex_offset))
-        .map(|(pos, tex, tex_offset)| Vertex {
-          position: (pos[0], pos[1], pos[2]),
-          tex: (tex.x, tex.y),
-          tex_offset: (tex_offset.x, tex_offset.y),
-        })
-        .collect();
+    let vertices_vec: Vec<Vertex> = izip!(
+      self.data.vertex.iter(),
+      self.data.tex.iter(),
+      self.data.tex_offset.iter()
+    )
+    .map(|(pos, tex, tex_offset)| (self.transform.transform_point(*pos), tex, tex_offset))
+    .map(|(pos, tex, tex_offset)| Vertex {
+      position: (pos[0], pos[1], pos[2]),
+      tex: (tex.x, tex.y),
+      tex_offset: (tex_offset.x, tex_offset.y),
+    })
+    .collect();
     let vertices = vertices_vec.iter().cloned();
     //println!("xxxxxxxxxxxxxxx vertices {:?}", vertices_vec);
     let normals_vec: Vec<Normal> = self
+      .data
       .normals
       .iter()
       .map(|pos| self.transform.transform_point(*pos))
@@ -168,7 +120,7 @@ impl MyMesh {
       .collect();
     let normals = normals_vec.iter().cloned();
 
-    let indices = self.index.iter().cloned();
+    let indices = self.data.index.iter().cloned();
 
     /*println!(
       "mesh properties: vertices {} normals {} indices {}",
@@ -229,36 +181,42 @@ impl MyMesh {
 
   pub fn printstats(&self) {
     let max_x = self
+      .data
       .vertex
       .iter()
       .cloned()
       .map(|p| p.x)
       .fold(-0.0 / 0.0, f32::max);
     let min_x = self
+      .data
       .vertex
       .iter()
       .cloned()
       .map(|p| p.x)
       .fold(-0.0 / 0.0, f32::min);
     let max_y = self
+      .data
       .vertex
       .iter()
       .cloned()
       .map(|p| p.y)
       .fold(-0.0 / 0.0, f32::max);
     let min_y = self
+      .data
       .vertex
       .iter()
       .cloned()
       .map(|p| p.y)
       .fold(-0.0 / 0.0, f32::min);
     let max_z = self
+      .data
       .vertex
       .iter()
       .cloned()
       .map(|p| p.z)
       .fold(-0.0 / 0.0, f32::max);
     let min_z = self
+      .data
       .vertex
       .iter()
       .cloned()
@@ -270,9 +228,9 @@ impl MyMesh {
     );
     println!(
       "mesh properties: vertices {} normals {} indices {}",
-      self.vertex.len(),
-      self.normals.len(),
-      self.index.len()
+      self.data.vertex.len(),
+      self.data.normals.len(),
+      self.data.index.len()
     );
     //println!("vertex {:?}", self.vertex);
     //println!("normal {:?}", self.normals);
@@ -316,22 +274,49 @@ impl MyMesh {
 
     let mut tex_offset = (0..vertex.len()).map(|_i| Point2::new(0, 0)).collect();
 
-    self.vertex.append(&mut vertex);
-    self.normals.append(&mut normals);
-    self.tex.append(&mut tex);
-    self.tex_offset.append(&mut tex_offset);
-    self.index.append(&mut index);
+    self.data.vertex.append(&mut vertex);
+    self.data.normals.append(&mut normals);
+    self.data.tex.append(&mut tex);
+    self.data.tex_offset.append(&mut tex_offset);
+    self.data.index.append(&mut index);
   }
 
   pub fn map_vertex<F>(&mut self, f: F)
   where
     F: Fn(&mut Point3<f32>),
   {
-    for (_i, v) in self.vertex.iter_mut().enumerate() {
+    for (_i, v) in self.data.vertex.iter_mut().enumerate() {
       f(&mut *v);
     }
     if self.print {
       self.printstats();
+    }
+  }
+
+  pub fn add_consume(&mut self, other: &mut MyMesh) {
+    self.data.add_consume(&mut other.data);
+    self.interesting.add_consume(&mut other.interesting);
+  }
+}
+
+impl MyMeshData {
+  pub fn add_consume(&mut self, other: &mut MyMeshData) {
+    let index_add: u32 = other.vertex.len() as u32;
+    self.vertex.append(&mut other.vertex);
+    self.normals.append(&mut other.normals);
+    self.tex.append(&mut other.tex);
+    self.tex_offset.append(&mut other.tex_offset);
+    for ind in other.index.iter_mut() {
+      *ind = index_add + *ind;
+    }
+    self.index.append(&mut other.index);
+  }
+}
+
+impl InterestingMeshData {
+  pub fn add_consume(&mut self, other: &mut InterestingMeshData) {
+    for (key, val) in other.map.drain() {
+      self.map.insert(key, val);
     }
   }
 }
@@ -372,4 +357,154 @@ fn _from_matrix(mat: Matrix3<f32>) -> Quaternion<f32> {
     let ww = (mat.x.y - mat.y.x) * ss;
     Quaternion::new(ww, xx, yy, zz)
   }
+}
+
+pub fn from_gltf(path: &Path, print: bool) -> MyMesh {
+  let (d, b, _i) = gltf::import(path).unwrap();
+  let mut all_vertex = vec![];
+  let mut all_normals = vec![];
+  let mut all_tex = vec![];
+  let mut all_tex_offset = vec![];
+  let mut all_index = vec![];
+  let mut bounding_boxes = vec![];
+  let mut last_index = 0;
+  let mut interesting_map: HashMap<String, MyMeshData> = HashMap::new();
+  println!("glb {:?}", path);
+  for mesh in d.meshes() {
+    let name_opt = mesh.name();
+    let interesting_name = name_opt.and_then(|name| {
+      if name.starts_with("interesting") {
+        let split: Vec<&str> = name.split("_").collect();
+        if split.len() > 1 {
+          Some(split[1])
+        } else {
+          None
+        }
+      } else {
+        None
+      }
+    });
+    let mut interesting_vertex = vec![];
+    let mut interesting_normals = vec![];
+    let mut interesting_tex = vec![];
+    let mut interesting_tex_offset = vec![];
+    let mut interesting_index = vec![];
+    let mut last_interesting_index = 0;
+    for primitive in mesh.primitives() {
+      //for (semantic, _) in primitive.attributes() {
+      //  println!("-- {:?}", semantic);
+      //}
+      //println!("{:?}", primitive.bounding_box());
+      bounding_boxes.push(primitive.bounding_box().clone());
+      let reader = primitive.reader(|buffer| Some(&b[buffer.index()]));
+      let mut vertex = {
+        let iter = reader.read_positions().unwrap_or_else(|| {
+          panic!(
+            "primitives must have the POSITION attribute (mesh: {}, primitive: {})",
+            mesh.index(),
+            primitive.index()
+          )
+        });
+
+        iter
+          .map(|arr| {
+            //println!("p {:?}", arr);
+            Point3::from(arr)
+          })
+          .collect::<Vec<_>>()
+      };
+      let mut tex: Vec<Point2<f32>> = (0..vertex.len())
+        .map(|_i| Point2::new(-1.0, -1.0))
+        .collect();
+
+      let mut tex_offset: Vec<Point2<i32>> =
+        (0..vertex.len()).map(|_i| Point2::new(0, 0)).collect();
+      let mut normals = {
+        let iter = reader.read_normals().unwrap_or_else(|| {
+          panic!(
+            "primitives must have the NORMALS attribute (mesh: {}, primitive: {})",
+            mesh.index(),
+            primitive.index()
+          )
+        });
+        iter
+          .map(|arr| {
+            // println!("n {:?}", arr);
+            Point3::from(arr)
+          })
+          .collect::<Vec<_>>()
+      };
+      let mut index = reader
+        .read_indices()
+        .map(|read_indices| read_indices.into_u32().collect::<Vec<_>>())
+        .unwrap();
+      if interesting_name.is_some() {
+        interesting_vertex.append(&mut vertex.clone());
+        interesting_normals.append(&mut normals.clone());
+        interesting_tex.append(&mut tex.clone());
+        interesting_tex_offset.append(&mut tex_offset.clone());
+        let mut index_clone = index.clone();
+        for ind in index_clone.iter_mut() {
+          *ind = last_interesting_index + *ind;
+        }
+        interesting_index.append(&mut index_clone);
+        last_interesting_index += vertex.len() as u32;
+      }
+      println!(
+        "- mesh Primitive {:?} #{} v {:?} i {:?}",
+        mesh.name(),
+        primitive.index(),
+        vertex.len(),
+        index.len()
+      );
+      all_normals.append(&mut normals);
+      all_tex.append(&mut tex);
+      all_tex_offset.append(&mut tex_offset);
+      for ind in index.iter_mut() {
+        *ind = last_index + *ind;
+      }
+      all_index.append(&mut index);
+      last_index += vertex.len() as u32;
+      all_vertex.append(&mut vertex);
+    }
+    if let Some(interesting_name) = interesting_name {
+      let interesting_mesh_data = MyMeshData {
+        vertex: interesting_vertex,
+        normals: interesting_normals,
+        tex: interesting_tex,
+        tex_offset: interesting_tex_offset,
+        index: interesting_index,
+      };
+      println!(
+        "part {:?} vertices {:?} indices {:?}",
+        interesting_name.to_string(),
+        interesting_mesh_data.vertex.len(),
+        interesting_mesh_data.index.len()
+      );
+      interesting_map.insert(interesting_name.to_string(), interesting_mesh_data);
+    }
+  }
+  let node: Node = d.nodes().find(|node| node.mesh().is_some()).unwrap();
+  let transform = Matrix4::from(node.transform().matrix());
+  // let (translation, rotation, scale) = node.transform().decomposed();
+  // println!("t {:?} r {:?} s {:?}", translation, rotation, scale);
+  let interesting = InterestingMeshData {
+    map: interesting_map,
+  };
+  let mut res = MyMesh::new_interesting(
+    all_vertex,
+    all_tex,
+    all_tex_offset,
+    all_normals,
+    all_index,
+    transform,
+    print,
+    interesting,
+  );
+  if print {
+    for bounding_box in bounding_boxes {
+      res.add_bounding_box(bounding_box.min, bounding_box.max);
+    }
+  }
+  res
 }

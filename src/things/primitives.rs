@@ -6,7 +6,7 @@ use vulkano::device::Device;
 
 use std::sync::Arc;
 
-use crate::render::model::{Model, ModelScene};
+use crate::render::model::Model;
 use crate::render::mymesh::MyMesh;
 use crate::render::scene::Scene;
 
@@ -202,7 +202,7 @@ impl PrimitiveSkyBox {
     PrimitiveSkyBox { model }
   }
 
-  pub fn get_model(&self) -> Vec<ModelScene> {
-    vec![(self.model.clone(), Scene::default())]
+  pub fn get_model(&self) -> Vec<&Model> {
+    vec![&self.model]
   }
 }

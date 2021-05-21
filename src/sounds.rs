@@ -1,4 +1,4 @@
-use rodio::{Decoder, OutputStream, OutputStreamHandle, source::Source};
+use rodio::{source::Source, Decoder, OutputStream, OutputStreamHandle};
 
 use std::fs::File;
 use std::io::BufReader;
@@ -31,7 +31,10 @@ impl Sounds {
   pub fn play(&mut self) {
     while !self.sources.is_empty() {
       let source = self.sources.remove(0);
-      self.stream_handle.play_raw(source.convert_samples());
+      self
+        .stream_handle
+        .play_raw(source.convert_samples())
+        .unwrap();
     }
   }
 }

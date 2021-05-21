@@ -425,22 +425,14 @@ fn grid_gen(
 
 #[derive(Clone)]
 pub struct TerrainModel {
-  model: Model,
-  scene: Scene,
+  pub mesh: MyMesh,
   pub left: Vec<f32>,
   pub right: Vec<f32>,
   pub top: Vec<f32>,
   pub bottom: Vec<f32>,
 }
 
-impl TerrainModel {
-  pub fn model_scene(&self) -> (Model, Scene) {
-    (self.model.clone(), self.scene.clone())
-  }
-}
-
 pub fn execute(
-  device: &Arc<Device>,
   sub_division: i32,
   mesh_size: i32,
   x: f32,
@@ -484,16 +476,14 @@ pub fn execute(
     .collect();
   let tex_offset = (0..vertex.len()).map(|_i| Point2::new(0, 0)).collect();
 
-  let mut res = MyMesh::new(vertex, tex, tex_offset, normals, index, transform, false);
-  res.update_transform_2(
+  let mut mesh = MyMesh::new(vertex, tex, tex_offset, normals, index, transform, true);
+  mesh.update_transform_2(
     Vector3::new(x, 0.0, z),
     Matrix4::from_angle_x(Rad(std::f32::consts::FRAC_PI_2)),
     [1.0, 1.0, 15.0],
   );
-
   TerrainModel {
-    model: res.get_buffers(&device),
-    scene: Default::default(),
+    mesh: mesh,
     left,
     right,
     top,
