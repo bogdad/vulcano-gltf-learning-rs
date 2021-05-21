@@ -29,7 +29,6 @@ pub struct InterestingMeshData {
 #[derive(Debug, Clone)]
 pub struct MyMesh {
   pub data: MyMeshData,
-  pub transform: Matrix4<f32>,
   print: bool,
   interesting: InterestingMeshData,
 }
@@ -41,6 +40,7 @@ pub struct MyMeshData {
   pub tex_offset: Vec<Point2<i32>>,
   pub normals: Vec<Point3<f32>>,
   pub index: Vec<u32>,
+  pub transform: Matrix4<f32>,
 }
 
 impl MyMesh {
@@ -81,10 +81,10 @@ impl MyMesh {
       tex_offset,
       normals,
       index,
+      transform,
     };
     let mesh = MyMesh {
       data,
-      transform,
       print,
       interesting: interesting,
     };
@@ -100,7 +100,7 @@ impl MyMesh {
       self.data.tex.iter(),
       self.data.tex_offset.iter()
     )
-    .map(|(pos, tex, tex_offset)| (self.transform.transform_point(*pos), tex, tex_offset))
+    .map(|(pos, tex, tex_offset)| (self.data.transform.transform_point(*pos), tex, tex_offset))
     .map(|(pos, tex, tex_offset)| Vertex {
       position: (pos[0], pos[1], pos[2]),
       tex: (tex.x, tex.y),
@@ -113,7 +113,7 @@ impl MyMesh {
       .data
       .normals
       .iter()
-      .map(|pos| self.transform.transform_point(*pos))
+      .map(|pos| self.data.transform.transform_point(*pos))
       .map(|pos| Normal {
         normal: (pos[0], pos[1], pos[2]),
       })
@@ -140,7 +140,7 @@ impl MyMesh {
   }
 
   fn _translation_decomposed(&self) -> (Vector3<f32>, Quaternion<f32>, [f32; 3]) {
-    let m = &self.transform;
+    let m = &self.data.transform;
     let translation = Vector3::new(m[3][0], m[3][1], m[3][2]);
     let mut i = Matrix3::new(
       m[0][0], m[0][1], m[0][2], m[1][0], m[1][1], m[1][2], m[2][0], m[2][1], m[2][2],
@@ -165,7 +165,7 @@ impl MyMesh {
     let t = Matrix4::from_translation(translation);
     let r = Matrix4::from(rotation);
     let s = Matrix4::from_nonuniform_scale(scale[0], scale[1], scale[2]);
-    self.transform = t * r * s;
+    self.data.transform = t * r * s;
   }
 
   pub fn update_transform_2(
@@ -176,7 +176,7 @@ impl MyMesh {
   ) {
     let t = Matrix4::from_translation(translation);
     let s = Matrix4::from_nonuniform_scale(scale[0], scale[1], scale[2]);
-    self.transform = t * rotation * s;
+    self.data.transform = t * rotation * s;
   }
 
   pub fn printstats(&self) {
@@ -369,6 +369,8 @@ pub fn from_gltf(path: &Path, print: bool) -> MyMesh {
   let mut bounding_boxes = vec![];
   let mut last_index = 0;
   let mut interesting_map: HashMap<String, MyMeshData> = HashMap::new();
+  let node: Node = d.nodes().find(|node| node.mesh().is_some()).unwrap();
+  let transform = Matrix4::from(node.transform().matrix());
   println!("glb {:?}", path);
   for mesh in d.meshes() {
     let name_opt = mesh.name();
@@ -474,6 +476,7 @@ pub fn from_gltf(path: &Path, print: bool) -> MyMesh {
         tex: interesting_tex,
         tex_offset: interesting_tex_offset,
         index: interesting_index,
+        transform,
       };
       println!(
         "part {:?} vertices {:?} indices {:?}",
@@ -484,8 +487,6 @@ pub fn from_gltf(path: &Path, print: bool) -> MyMesh {
       interesting_map.insert(interesting_name.to_string(), interesting_mesh_data);
     }
   }
-  let node: Node = d.nodes().find(|node| node.mesh().is_some()).unwrap();
-  let transform = Matrix4::from(node.transform().matrix());
   // let (translation, rotation, scale) = node.transform().decomposed();
   // println!("t {:?} r {:?} s {:?}", translation, rotation, scale);
   let interesting = InterestingMeshData {
