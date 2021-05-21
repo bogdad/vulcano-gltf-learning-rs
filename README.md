@@ -5,7 +5,8 @@
 
 - [ ] how do we make terrain under the clouds
 - [ ] how do we make clouds transparent
-- [ ] how do we add power lines
+- [?] how do we add power lines to each sky segment
+- [x] how do we add power line
 - [x] how do we make sound environment
 - [x] how do we make clouds seamless
 - [x] how do we debug skybox
@@ -19,7 +20,12 @@
 - [ ] how do vertex normals work
 - [x] how do coordinate systems work
 
-## how do we add power lines
+## how do we add power lines to each sky segment
+
+in progress:
+![power lines in segments, very weird geometry](./images/19.png)
+
+## how do we add power line
 
 ![power line, in full](./images/18.png)
 

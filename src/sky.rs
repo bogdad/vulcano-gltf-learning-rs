@@ -130,7 +130,7 @@ impl CacheCell {
           let vtop = get_border_vec(otop, |tm| tm.terrain.bottom.clone());
           let vbottom = get_border_vec(obottom, |tm| tm.terrain.top.clone());
           let mut terrain_model = terrain_generation::execute(
-            8,
+            Sky::DETAIL,
             Sky::X as i32,
             x + Sky::X / 2.0,
             z + Sky::Z / 2.0,
@@ -145,9 +145,8 @@ impl CacheCell {
             Matrix4::one(),
             [1.0, 1.0, 1.0],
           );
-          //terrain_model.mesh.add_consume(&mut mesh);
-          mesh.add_consume(&mut terrain_model.mesh);
-          let model = mesh.get_buffers(&device);
+          terrain_model.mesh.add_consume(&mut mesh);
+          let model = terrain_model.mesh.get_buffers(&device);
           let sky_segment = SkySegment {
             terrain: terrain_model,
             model: model,
@@ -234,6 +233,7 @@ impl Sky {
   const Z_ROWS: usize = 9;
   const MX: usize = 5;
   const MZ: usize = 5;
+  const DETAIL: i32 = 9;
 
   pub fn new(settings: Settings, device: &Arc<Device>, x: f32, z: f32) -> Self {
     let mut cache: Vec<CacheCell> = vec![];

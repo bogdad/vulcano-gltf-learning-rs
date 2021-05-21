@@ -314,9 +314,12 @@ impl MyMeshData {
     TransformA x VertX = TransformB x VertB
     VertX = InvA x TransformB x VertB
     */
-    let mult_mat = self.inverse_transform * other.transform;
+    let mult_mat = self.inverse_transform.concat(&other.transform);
     for vert in other.vertex.iter_mut() {
       *vert = mult_mat.transform_point(*vert);
+    }
+    for norm in other.normals.iter_mut() {
+      *norm = mult_mat.transform_point(*norm);
     }
 
     let index_add: u32 = self.vertex.len() as u32;
