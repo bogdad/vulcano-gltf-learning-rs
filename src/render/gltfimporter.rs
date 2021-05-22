@@ -4,6 +4,7 @@ use gltf::mesh::BoundingBox;
 use gltf::scene::Node;
 
 use std::collections::HashMap;
+use std::option::Option;
 use std::path::Path;
 
 use crate::render::mymesh::{InterestingMeshData, MyMesh, MyMeshData};
@@ -14,6 +15,7 @@ type Tex = Vec<Point2<f32>>;
 type TexOffset = Vec<Point2<i32>>;
 type Index = Vec<u32>;
 type Trans = Matrix4<f32>;
+type InvTrans = Matrix4<f32>;
 
 #[derive(Default, Debug)]
 struct State {
@@ -33,7 +35,16 @@ impl State {
     tex: &mut Tex,
     tex_offset: &mut TexOffset,
     index: &mut Index,
+    current_transform: Option<(Trans, InvTrans)>,
   ) {
+    if let Some((current_transform, _)) = current_transform {
+      for vert in vertex.iter_mut() {
+        *vert = current_transform.transform_point(*vert);
+      }
+      for norm in normals.iter_mut() {
+        *norm = current_transform.transform_point(*norm);
+      }
+    }
     self.all_normals.append(normals);
     self.all_tex.append(tex);
     self.all_tex_offset.append(tex_offset);
@@ -79,7 +90,7 @@ impl State {
   }
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
 struct VisitState {
   b: Vec<buffer::Data>,
   state: State,
@@ -89,16 +100,34 @@ struct VisitState {
   interesting_map: HashMap<String, MyMeshData>,
 }
 
-fn visit_node(
+impl VisitState {
+  pub fn finish(self, transform: Trans, print: bool) -> MyMesh {
+    let mut res = self.state.build_mesh(self.interesting_map, transform, print);
+
+    if print {
+      for bounding_box in self.bounding_boxes {
+        res.add_bounding_box(bounding_box.min, bounding_box.max);
+      }
+    }
+    res
+  }
+}
+
+fn collect_mesh(
   visit_state: &mut VisitState,
-  node: Node,
-  parent_transform: Trans,
-  parent_inverse_transform: Trans,
+  node: &Node,
+  parent_transforms: Option<(Trans, InvTrans)>,
 ) {
-  let node_transform = Matrix4::from(node.transform().matrix());
-  let node_inverse_transform = node_transform.inverse_transform().unwrap();
-  let transform = parent_transform.concat(&node_transform);
-  let inverse_transform = parent_inverse_transform.concat(&node_inverse_transform);
+  let current_transform = if let Some((parent_transform, parent_inv_transform)) = parent_transforms {
+    let mut transform = Matrix4::from(node.transform().matrix());
+    let mut inverse_transform = transform.inverse_transform().unwrap();
+    transform = parent_transform.concat(&transform);
+    inverse_transform = parent_inv_transform.concat(&inverse_transform);
+    Some((transform, inverse_transform))
+  } else {
+    None
+  };
+
   if let Some(mesh) = node.mesh() {
     let name_opt = mesh.name();
     let interesting_name = name_opt.and_then(|name| {
@@ -167,6 +196,7 @@ fn visit_node(
           &mut tex.clone(),
           &mut tex_offset.clone(),
           &mut index.clone(),
+          current_transform,
         );
       }
       if visit_state.print {
@@ -184,9 +214,15 @@ fn visit_node(
         &mut tex,
         &mut tex_offset,
         &mut index,
+        current_transform,
       );
     }
     if let Some(interesting_name) = interesting_name {
+      let (transform, inverse_transform) = if let Some((transform, inverse_transform)) = current_transform {
+        (transform, inverse_transform)
+      } else {
+        (Matrix4::one(), Matrix4::one())
+      };
       let interesting_mesh_data = interesting_state.build_mesh_data(transform, inverse_transform);
       if visit_state.print {
         println!(
@@ -201,29 +237,41 @@ fn visit_node(
         .insert(interesting_name.to_string(), interesting_mesh_data);
     }
   }
+  /*
+     root:
+     current: none  ->  matrix one.Matrix4
+     non root:
+     current: prev node transfartm -> prev node transform * this node transform.
+  */
+  let next_transform = if let Some((current_transform, current_inverse)) = current_transform {
+    Some((current_transform, current_inverse))
+  } else {
+    Some((Matrix4::one(), Matrix4::one()))
+  };
   for child_node in node.children() {
-    visit_node(visit_state, child_node, transform, inverse_transform);
+    collect_mesh(visit_state, &child_node, next_transform);
   }
 }
 
 pub fn from_gltf(path: &Path, print: bool) -> MyMesh {
   println!("glb {:?}", path);
   let (d, b, _i) = gltf::import(path).unwrap();
-  let mut state = State::default();
-  let mut bounding_boxes = vec![];
-  let mut interesting_map: HashMap<String, MyMeshData> = HashMap::new();
 
-  let default_scene = d.default_scene();
-
-  for mesh in d.meshes() {}
-  // let (translation, rotation, scale) = node.transform().decomposed();
-  // println!("t {:?} r {:?} s {:?}", translation, rotation, scale);
-  let mut res = state.build_mesh(interesting_map, transform, print);
-
-  if print {
-    for bounding_box in bounding_boxes {
-      res.add_bounding_box(bounding_box.min, bounding_box.max);
-    }
+  let default_scene = d.default_scene().unwrap();
+  if default_scene.nodes().len() != 1 {
+    panic!("expect default scene to have one root node");
   }
-  res
+  let root_node = default_scene.nodes().next().unwrap();
+
+  let mut visit_state = VisitState {
+    b,
+    state: State::default(),
+    interesting_state: State::default(),
+    bounding_boxes: Vec::default(),
+    interesting_map: HashMap::default(),
+    print: print,
+  };
+  collect_mesh(&mut visit_state, &root_node, None);
+  let transform = Matrix4::from(root_node.transform().matrix());
+  visit_state.finish(transform, print)
 }

@@ -25,8 +25,8 @@ impl LapMesh {
     mesh.reset_transform();
     mesh.update_transform_2(
       Vector3::<f32>::new(0.0, 0.0, 0.0),
-      Matrix4::one(),
-      //Matrix4::from_angle_y(Rad(std::f32::consts::FRAC_PI_2)),
+      //Matrix4::one(),
+      Matrix4::from_angle_z(-Rad(std::f32::consts::FRAC_PI_2)),
       [1.0 / 500.0, 1.0 / 500.0, 1.0 / 500.0],
     );
     LapMesh { mesh }
