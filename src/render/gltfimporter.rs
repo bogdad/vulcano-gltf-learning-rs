@@ -8,14 +8,9 @@ use std::option::Option;
 use std::path::Path;
 
 use crate::render::mymesh::{InterestingMeshData, MyMesh, MyMeshData};
+use crate::render::mymesh::transform_decomposed;
+use crate::render::{Normals, Vertex, Tex, TexOffset, Index, Trans, InvTrans};
 
-type Vertex = Vec<Point3<f32>>;
-type Normals = Vec<Point3<f32>>;
-type Tex = Vec<Point2<f32>>;
-type TexOffset = Vec<Point2<i32>>;
-type Index = Vec<u32>;
-type Trans = Matrix4<f32>;
-type InvTrans = Matrix4<f32>;
 
 #[derive(Default, Debug)]
 struct State {
@@ -248,6 +243,11 @@ fn collect_mesh(
   } else {
     Some((Matrix4::one(), Matrix4::one()))
   };
+  println!("node {}", node.name().unwrap_or("default"));
+  let (t, r, s) = transform_decomposed(&next_transform.unwrap().0);
+  println!("{:?}", t);
+  println!("{:?}", r);
+  println!("{:?}", s);
   for child_node in node.children() {
     collect_mesh(visit_state, &child_node, next_transform);
   }

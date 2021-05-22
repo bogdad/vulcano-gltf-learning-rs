@@ -16,6 +16,7 @@ use std::collections::HashMap;
 use std::ops::MulAssign;
 use std::sync::Arc;
 
+use crate::render::Trans;
 use crate::render::model::Model;
 use crate::utils::{Normal, Vertex};
 
@@ -356,6 +357,23 @@ fn _from_matrix(mat: Matrix3<f32>) -> Quaternion<f32> {
     let ww = (mat.x.y - mat.y.x) * ss;
     Quaternion::new(ww, xx, yy, zz)
   }
+}
+
+pub fn transform_decomposed(transform: &Trans) -> (Vector3<f32>, Quaternion<f32>, [f32; 3]) {
+  let m = transform;
+  let translation = Vector3::new(m[3][0], m[3][1], m[3][2]);
+  let mut i = Matrix3::new(
+    m[0][0], m[0][1], m[0][2], m[1][0], m[1][1], m[1][2], m[2][0], m[2][1], m[2][2],
+  );
+  let sx = i.x.magnitude();
+  let sy = i.y.magnitude();
+  let sz = i.determinant().signum() * i.z.magnitude();
+  let scale = [sx, sy, sz];
+  i.x.mul_assign(1.0 / sx);
+  i.y.mul_assign(1.0 / sy);
+  i.z.mul_assign(1.0 / sz);
+  let r = _from_matrix(i);
+  (translation, r, scale)
 }
 
 #[cfg(test)]
