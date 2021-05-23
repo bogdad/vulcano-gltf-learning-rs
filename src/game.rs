@@ -6,10 +6,15 @@ use vulkano::sync;
 use vulkano::sync::{FlushError, GpuFuture};
 use vulkano_text::DrawTextTrait;
 use winit::event::{Event, KeyboardInput, VirtualKeyCode, WindowEvent};
-use winit::event_loop::ControlFlow;
+use winit::event_loop::{ControlFlow, EventLoop, EventLoopClosed};
+use profiling;
+
 
 use std::boxed::Box;
+use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::path::Path;
+use std::thread::JoinHandle;
 
 use crate::camera::Camera;
 use crate::executor::Executor;
@@ -24,6 +29,7 @@ use crate::world::World;
 use crate::Graph;
 use crate::Model;
 use crate::Settings;
+use crate::GameEvent;
 
 pub struct Game {
   settings: Settings,
@@ -36,10 +42,14 @@ pub struct Game {
   previous_frame_end: Option<Box<dyn GpuFuture>>,
   system: System,
   cmd_pressed: bool,
+  game_exited: Arc<AtomicBool>,
+  ticker_thread: Option<JoinHandle<()>>,
 }
 
+
+
 impl Game {
-  pub fn new(settings: Settings, executor: Executor, graph: Graph) -> Game {
+  pub fn new(settings: Settings, executor: Executor, graph: Graph, event_loop: &EventLoop<GameEvent>) -> Game {
     // gltf:
     // "and the default camera sits on the
     // -Z side looking toward the origin with +Y up"
@@ -123,6 +133,27 @@ impl Game {
 
     let previous_frame_end = Some(system_future);
 
+    let event_loop_proxy = event_loop.create_proxy();
+
+    let game_exited = Arc::new(AtomicBool::new(false));
+    let game_exited_local = Arc::clone(&game_exited);
+
+    let ticker_thread = Some(std::thread::Builder::new()
+    .name(format!("ticker"))
+    .spawn(move ||  {
+        while !game_exited_local.load(Ordering::Acquire) {
+          // 1000 ms / 30 fps = 33 ms
+          std::thread::sleep(std::time::Duration::from_millis(33));
+          let result = event_loop_proxy.send_event(GameEvent::Frame);
+          match result {
+            Ok(()) => (),
+            Err(_) => {
+              break;
+            }
+          }
+        }
+    }).unwrap());
+
     Game {
       settings,
       graph,
@@ -134,12 +165,16 @@ impl Game {
       system,
       previous_frame_end,
       cmd_pressed: false,
+      game_exited,
+      ticker_thread,
     }
   }
 
+  #[profiling::function]
   fn draw(&mut self) {
     self.previous_frame_end.as_mut().unwrap().cleanup_finished();
     if self.recreate_swapchain {
+      profiling::scope!("recreate_swap_chain");
       self.graph.recreate_swapchain();
       self.system.recreate_swapchain(&self.graph);
       self.recreate_swapchain = false;
@@ -152,7 +187,10 @@ impl Game {
     );
     let set_skybox = self.system.skybox_set(self.camera.proj_skybox(&self.graph));
 
-    let (image_num, suboptimal, acquire_future) =
+
+    let (image_num, suboptimal, acquire_future) = {
+      profiling::scope!("acquire_next_image");
+      let (image_num, suboptimal, acquire_future) =
       match swapchain::acquire_next_image(self.graph.swapchain.clone(), None) {
         Ok(r) => r,
         Err(AcquireError::OutOfDate) => {
@@ -161,6 +199,8 @@ impl Game {
         }
         Err(e) => panic!("Failed to acquire next image: {:?}", e),
       };
+      (image_num, suboptimal, acquire_future)
+    };
 
     if suboptimal {
       self.recreate_swapchain = true;
@@ -183,13 +223,21 @@ impl Game {
         ],
       )
       .unwrap();
+    {
+    profiling::scope!("iterate-models");
     for model in &self.models {
       model.draw_indexed(&mut builder, self.system.pipeline.clone(), set.clone());
     }
+    }
+    {
+    profiling::scope!("iterate-world-models");
     for model in self.world.get_models() {
       model.draw_indexed(&mut builder, self.system.pipeline.clone(), set.clone());
     }
+    }
     builder.next_subpass(SubpassContents::Inline).unwrap();
+    {
+      profiling::scope!("iterate-world-models");
     for model in self.world.get_models_skybox() {
       model.draw_indexed(
         &mut builder,
@@ -197,8 +245,10 @@ impl Game {
         set_skybox.clone(),
       );
     }
+    }
     builder.end_render_pass().unwrap();
-
+    {
+      profiling::scope!("draw-text");
     let mut y = 50.0;
     let status = self.status_string();
     for line in status.split('\n') {
@@ -209,7 +259,7 @@ impl Game {
       y += 40.0;
     }
     builder.draw_text(&mut self.graph.draw_text, image_num);
-
+    }
     let command_buffer = builder.build().unwrap();
 
     let future = self
@@ -249,7 +299,9 @@ impl Game {
     self.world.tick();
   }
 
-  pub fn gloop(&mut self, event: Event<()>, control_flow: &mut ControlFlow) {
+  #[profiling::function]
+  pub fn gloop(&mut self, event: Event<GameEvent>, control_flow: &mut ControlFlow) {
+    *control_flow = ControlFlow::Wait;
     match event {
       Event::WindowEvent {
         event: WindowEvent::ModifiersChanged(modifiers),
@@ -261,6 +313,7 @@ impl Game {
         event: WindowEvent::CloseRequested,
         ..
       } => {
+        self.game_exited.store(true, Ordering::Release);
         *control_flow = ControlFlow::Exit;
       }
       Event::WindowEvent {
@@ -284,6 +337,7 @@ impl Game {
         } = input
         {
           if self.cmd_pressed {
+            self.game_exited.store(true, Ordering::Release);
             *control_flow = ControlFlow::Exit;
           }
         }
@@ -295,7 +349,15 @@ impl Game {
         self.camera.react_mouse(&position);
       }
       Event::RedrawEventsCleared => {
-        self.draw();
+        //self.draw();
+      }
+      Event::UserEvent(game_event) => {
+        match game_event {
+          GameEvent::Frame => {
+            self.draw();
+          }
+          _ => (),
+        }
       }
       _ => (),
     }

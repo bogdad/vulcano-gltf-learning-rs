@@ -1,5 +1,6 @@
 use cgmath::Point3;
 use winit::event::{KeyboardInput, VirtualKeyCode};
+use profiling;
 
 use std::fmt;
 
@@ -111,6 +112,7 @@ impl World {
     res
   }
 
+  #[profiling::function]
   pub fn get_models_skybox(&self) -> Vec<&Model> {
     let mut res = vec![];
     res.extend(self.skybox.get_model());

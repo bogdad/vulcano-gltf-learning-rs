@@ -11,6 +11,7 @@ use vulkano::pipeline::viewport::Viewport;
 use vulkano::pipeline::{GraphicsPipeline, GraphicsPipelineAbstract};
 use vulkano::sampler::{Filter, MipmapMode, Sampler, SamplerAddressMode};
 use vulkano::sync::GpuFuture;
+use profiling;
 
 use cgmath::Point3;
 
@@ -20,7 +21,6 @@ use std::convert::TryInto;
 use std::iter;
 use std::sync::Arc;
 
-use crate::render::model::Model;
 use crate::render::scene::MergedScene;
 use crate::render::scene::Scene;
 use crate::render::skybox::SkyboxCubemap;
@@ -118,7 +118,7 @@ impl System {
       text_future.join(skybox_future).boxed(),
     )
   }
-
+  #[profiling::function]
   pub fn main_set(
     &self,
     proj: shaders::main::vs::ty::Data,
@@ -214,6 +214,7 @@ impl System {
     )
   }
 
+  #[profiling::function]
   pub fn skybox_set(
     &self,
     proj: shaders::skybox::vs::ty::Data,
@@ -241,6 +242,7 @@ impl System {
     )
   }
 
+  #[profiling::function]
   pub fn recreate_swapchain(&mut self, graph: &Graph) {
     let (pipeline, pipeline_skybox, framebuffers, color_buffer, depth_buffer) =
       window_size_dependent_setup(
@@ -262,6 +264,7 @@ impl System {
   }
 }
 
+#[profiling::function]
 fn window_size_dependent_setup(
   device: Arc<Device>,
   vs: &shaders::main::vs::Shader,

@@ -21,6 +21,14 @@ mint = "0.5.6"
 ab_glyph = "0.2.9"
 image = "0.23.13"
 rodio = "0.13.1"
+profiling = "1.0.0"
+
+[features]
+profile-with-puffin = ["profiling/profile-with-puffin"]
+profile-with-optick = ["profiling/profile-with-optick"]
+profile-with-superluminal = ["profiling/profile-with-superluminal"]
+profile-with-tracing = ["profiling/profile-with-tracing"]
+profile-with-tracy = ["profiling/profile-with-tracy"]
 
 [dependencies.futures]
 version = "0.3.12"

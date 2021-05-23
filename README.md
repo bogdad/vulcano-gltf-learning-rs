@@ -5,7 +5,8 @@
 
 - [ ] how do we make terrain under the clouds
 - [ ] how do we make clouds transparent
-- [?] how do we add power lines to each sky segment
+- [x] how do we profile
+- [x] how do we add power lines to each sky segment
 - [x] how do we add power line
 - [x] how do we make sound environment
 - [x] how do we make clouds seamless
@@ -20,9 +21,55 @@
 - [ ] how do vertex normals work
 - [x] how do coordinate systems work
 
+## how do we profile
+
+![tracy profiler](./images/21.png)
+
+we use [profiling](https://crates.io/crates/profiling) with [tracy-client](https://crates.io/crates/tracy-client) and [tracy](https://github.com/wolfpld/tracy) backend/visualization.
+
+add lots of `#[profiling::function]` annotations, 
+add this to cargo
+```
+[features]
+profile-with-puffin = ["profiling/profile-with-puffin"]
+profile-with-optick = ["profiling/profile-with-optick"]
+profile-with-superluminal = ["profiling/profile-with-superluminal"]
+profile-with-tracing = ["profiling/profile-with-tracing"]
+profile-with-tracy = ["profiling/profile-with-tracy"]
+```
+
+on mac os tracy can be compiled like this:
+```
+brew install freetype capstone gtk
+brew install glfw3
+git clone git@github.com:wolfpld/tracy.git
+cd tracy/profiler/build/unix
+make release
+```
+
+and run like this
+```
+cd tracy/
+profiler/build/unix/Tracy-release
+```
+
+then the game can be run with
+```
+cargo run --release --features=profile-with-tracy
+```
+
+then in tracy - `connect to 127.0.0.1`.
+
+current thing gets 100 fps. yay!
+
 ## how do we add power lines to each sky segment
 
-in progress:
+finally it looks like this:
+![power lines in segments, almost](./images/20.png)
+
+its almost done, the thing left to do is add connectings wires.
+
+some early, in progress shot:
 ![power lines in segments, very weird geometry](./images/19.png)
 
 ## how do we add power line

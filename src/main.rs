@@ -16,10 +16,13 @@ use winit::dpi::PhysicalSize;
 use winit::event_loop::EventLoop;
 use winit::window::{Window, WindowBuilder};
 
+
 extern crate futures;
 extern crate itertools;
 extern crate mint;
 extern crate vulkano_text;
+extern crate profiling;
+
 
 use futures::executor::ThreadPoolBuilder;
 
@@ -40,11 +43,16 @@ mod shaders;
 mod things;
 mod utils;
 
+
 use executor::Executor;
 use game::Game;
 use render::model::Model;
 use settings::Settings;
 use shaders::{main, skybox};
+
+pub enum GameEvent {
+  Frame,
+}
 
 pub struct Graph {
   surface: Arc<Surface<Window>>,
@@ -62,7 +70,7 @@ pub struct Graph {
 }
 
 impl Graph {
-  fn new(event_loop: &EventLoop<()>) -> Graph {
+  fn new(event_loop: &EventLoop<GameEvent>) -> Graph {
     let required_extensions = vulkano_win::required_extensions();
     let instance = Instance::new(None, &required_extensions, None).unwrap();
 
@@ -222,7 +230,7 @@ fn main() {
   thread_pool_builder.name_prefix("background").pool_size(2);
   let thread_pool = thread_pool_builder.create().unwrap();
 
-  let event_loop = EventLoop::new();
+  let event_loop = EventLoop::<GameEvent>::with_user_event();
   let graph = Graph::new(&event_loop);
 
   /*let dynamic_state = DynamicState {
@@ -245,11 +253,14 @@ fn main() {
     lap_enabled: true,
   };
 
-  let mut game = Game::new(settings, executor, graph);
+  let mut game = Game::new(settings, executor, graph, &event_loop);
 
   game.init();
   event_loop.run(move |event, _, mut control_flow| {
+    profiling::scope!("event_loop");
     game.tick();
-    game.gloop(event, &mut control_flow)
+    let res = game.gloop(event, &mut control_flow);
+    profiling::finish_frame!();
+    res
   });
 }

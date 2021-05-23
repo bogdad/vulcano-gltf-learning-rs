@@ -4,6 +4,7 @@ use vulkano::command_buffer::{AutoCommandBufferBuilder, DynamicState};
 use vulkano::descriptor::descriptor_set::DescriptorSetsCollection;
 use vulkano::device::Device;
 use vulkano::pipeline::GraphicsPipelineAbstract;
+use profiling;
 
 use std::path::Path;
 use std::sync::Arc;
@@ -32,6 +33,7 @@ impl Model {
     }
   }
 
+  #[profiling::function]
   pub fn draw_indexed<S>(
     &self,
     builder: &mut AutoCommandBufferBuilder<StandardCommandPoolBuilder>,
