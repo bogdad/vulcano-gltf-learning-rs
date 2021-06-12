@@ -2229,10 +2229,14 @@ checksum = "b5a972e5669d67ba988ce3dc826706fb0a8b01471c088cb0b6110b805cc36aed"
 [[package]]
 name = "vk-sys"
 version = "0.6.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "13cf8378b55e764a88f110b1e3923cb3360fb1efdeaf51fb733934419682dd73"
 
 [[package]]
 name = "vulkano"
 version = "0.23.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "285e8ffaef22610e649f67b7c68fd9c8fe34d6540ccc283fd603b86be6610a82"
 dependencies = [
  "crossbeam-queue",
  "fnv",
@@ -2247,6 +2251,8 @@ dependencies = [
 [[package]]
 name = "vulkano-shaders"
 version = "0.23.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e0a9a5aec58764a35dca4eae0aa48f6d09d5757754a26e4c24a286f989b08334"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -2555,11 +2561,3 @@ name = "xml-rs"
 version = "0.8.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b07db065a5cf61a7e4ba64f29e67db906fb1787316516c4e6e5ff0fea1efcd8a"
-
-[[patch.unused]]
-name = "vulkano-win"
-version = "0.22.0"
-
-[[patch.unused]]
-name = "vulkano_text"
-version = "0.13.0"

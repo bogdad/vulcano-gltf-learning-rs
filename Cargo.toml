@@ -23,12 +23,6 @@ image = "0.23"
 rodio = "0.14"
 profiling = "1.0"
 
-[patch.crates-io]
-vulkano = {path = "../vulkano/vulkano"}
-vulkano-shaders = {path = "../vulkano/vulkano-shaders"}
-vulkano-win = {path = "../vulkano/vulkano-win"}
-vulkano_text = {path = "../vulkano-text"}
-
 [features]
 profile-with-puffin = ["profiling/profile-with-puffin"]
 profile-with-optick = ["profiling/profile-with-optick"]
