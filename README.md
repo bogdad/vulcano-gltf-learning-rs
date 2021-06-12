@@ -5,6 +5,7 @@
 
 - [ ] how do we make terrain under the clouds
 - [ ] how do we make clouds transparent
+- [x] how do we notice a thing to improve in profile
 - [x] how do we profile
 - [x] how do we add power lines to each sky segment
 - [x] how do we add power line
@@ -20,6 +21,30 @@
 - [x] how do we generate random "cloud like landcapes" on the fly
 - [ ] how do vertex normals work
 - [x] how do coordinate systems work
+
+## how do we notice a thing to improve in profile
+
+in the profile i noticed `draw` taking a lot unaccounted time, like 5ms.
+turns out its `self.previous_frame_end.as_mut().unwrap().cleanup_finished();`
+
+![cleanup finished](./images/22.png)
+
+there seem to be a lot of discussions regarding performance of vulkano with molten vk on mac os, and cleanup_finished seems to be the thing that prevents it. or from brief googling this seems to be the case.
+
+```
+https://github.com/vulkano-rs/vulkano/issues/1135
+https://github.com/vulkano-rs/vulkano/pull/955
+https://github.com/vulkano-rs/vulkano/pull/1027
+https://github.com/vulkano-rs/vulkano/issues/1247
+```
+
+![cleanup finished, explained](./images/23.png)
+
+for now i am calling it every 10 frame, and the game been behaving much better.
+
+![cleanup finished, call rarer?](./images/24.png)
+
+would be really cool to know what is a proper way to deal with this.
 
 ## how do we profile
 

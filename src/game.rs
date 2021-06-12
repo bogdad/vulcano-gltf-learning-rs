@@ -40,6 +40,7 @@ pub struct Game {
   recreate_swapchain: bool,
   models: Vec<Model>,
   previous_frame_end: Option<Box<dyn GpuFuture>>,
+  i_frame: u64,
   system: System,
   cmd_pressed: bool,
   game_exited: Arc<AtomicBool>,
@@ -164,6 +165,7 @@ impl Game {
       sounds,
       system,
       previous_frame_end,
+      i_frame: 0,
       cmd_pressed: false,
       game_exited,
       ticker_thread,
@@ -172,7 +174,13 @@ impl Game {
 
   #[profiling::function]
   fn draw(&mut self) {
-    self.previous_frame_end.as_mut().unwrap().cleanup_finished();
+    self.i_frame = self.i_frame + 1;
+    {
+      profiling::scope!("cleanup_finished");
+      if self.i_frame % 10 == 0 {
+        self.previous_frame_end.as_mut().unwrap().cleanup_finished();
+      }
+    }
     if self.recreate_swapchain {
       profiling::scope!("recreate_swap_chain");
       self.graph.recreate_swapchain();
@@ -180,13 +188,19 @@ impl Game {
       self.recreate_swapchain = false;
     }
 
-    let set = self.system.main_set(
+    let set = {
+      profiling::scope!("main_set");
+      self.system.main_set(
       self.camera.proj(&self.graph),
       self.world.get_scenes(),
       self.camera.pos,
-    );
-    let set_skybox = self.system.skybox_set(self.camera.proj_skybox(&self.graph));
+    )
+     };
 
+    let set_skybox = {
+      profiling::scope!("sky_box_set");
+      self.system.skybox_set(self.camera.proj_skybox(&self.graph))
+    };
 
     let (image_num, suboptimal, acquire_future) = {
       profiling::scope!("acquire_next_image");
@@ -211,7 +225,9 @@ impl Game {
       self.graph.queue.family(),
     )
     .unwrap();
-    builder
+    {
+      profiling::scope!("begin-render-pass");
+      builder
       .begin_render_pass(
         self.system.framebuffers[image_num].clone(),
         SubpassContents::Inline,
@@ -223,6 +239,7 @@ impl Game {
         ],
       )
       .unwrap();
+    }
     {
     profiling::scope!("iterate-models");
     for model in &self.models {
