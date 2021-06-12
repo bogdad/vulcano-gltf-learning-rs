@@ -1,4 +1,4 @@
-use cgmath::{Matrix4, Point2, Point3, Transform};
+use cgmath::{Matrix4, Point2, Point3, Transform, One};
 use gltf::buffer;
 use gltf::mesh::BoundingBox;
 use gltf::scene::Node;
@@ -216,7 +216,7 @@ fn collect_mesh(
       let (transform, inverse_transform) = if let Some((transform, inverse_transform)) = current_transform {
         (transform, inverse_transform)
       } else {
-        (Matrix4::one(), Matrix4::one())
+        (One::one(), One::one())
       };
       let interesting_mesh_data = interesting_state.build_mesh_data(transform, inverse_transform);
       if visit_state.print {

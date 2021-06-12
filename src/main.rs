@@ -1,8 +1,9 @@
 use vulkano::device::{Device, DeviceExtensions, Queue};
 use vulkano::format::Format;
-use vulkano::framebuffer::RenderPassAbstract;
+use vulkano::render_pass::RenderPass;
 use vulkano::image::{ImageUsage, SwapchainImage};
-use vulkano::instance::{Instance, PhysicalDevice, PhysicalDeviceType};
+use vulkano::instance::{PhysicalDevice, PhysicalDeviceType};
+use vulkano::instance::Instance;
 
 use vulkano::swapchain::{
   ColorSpace, FullscreenExclusive, PresentMode, Surface, SurfaceTransform, Swapchain,
@@ -61,7 +62,7 @@ pub struct Graph {
   queue: Arc<Queue>,
   swapchain: Arc<Swapchain<Window>>,
   images: Vec<Arc<SwapchainImage<Window>>>,
-  render_pass: Arc<dyn RenderPassAbstract + Send + Sync>,
+  render_pass: Arc<RenderPass>,
   vs: main::vs::Shader,
   fs: main::fs::Shader,
   skybox_vs: skybox::vs::Shader,
@@ -72,7 +73,7 @@ pub struct Graph {
 impl Graph {
   fn new(event_loop: &EventLoop<GameEvent>) -> Graph {
     let required_extensions = vulkano_win::required_extensions();
-    let instance = Instance::new(None, &required_extensions, None).unwrap();
+    let instance = Instance::new(None, &required_extensions, vec![]).unwrap();
 
     for device in PhysicalDevice::enumerate(&instance) {
       println!(
@@ -118,23 +119,17 @@ impl Graph {
       let format = caps.supported_formats[0].0;
       let dimensions: [u32; 2] = surface.window().inner_size().into();
 
-      Swapchain::new(
+      Swapchain::start(
         device.clone(),
-        surface.clone(),
-        caps.min_image_count,
-        format,
-        dimensions,
-        1,
-        ImageUsage::color_attachment(),
-        &queue,
-        SurfaceTransform::Identity,
-        alpha,
-        PresentMode::Fifo,
-        FullscreenExclusive::Default,
-        true,
-        ColorSpace::SrgbNonLinear,
-      )
-      .unwrap()
+        surface.clone())
+        .num_images(caps.min_image_count)
+        .format(format)
+        .dimensions(dimensions)
+        .usage(ImageUsage::color_attachment())
+        .sharing_mode(&queue)
+        .composite_alpha(alpha)
+        .build()
+        .unwrap()
     };
 
     let render_pass = Arc::new(
@@ -208,7 +203,7 @@ impl Graph {
 
   pub fn recreate_swapchain(&mut self) {
     let dimensions: [u32; 2] = self.surface.window().inner_size().into();
-    let (new_swapchain, new_images) = match self.swapchain.recreate_with_dimensions(dimensions) {
+    let (new_swapchain, new_images) = match self.swapchain.recreate().dimensions(dimensions).build() {
       Ok(r) => r,
       Err(SwapchainCreationError::UnsupportedDimensions) => return,
       Err(e) => panic!("Failed to recreate swapchain: {:?}", e),

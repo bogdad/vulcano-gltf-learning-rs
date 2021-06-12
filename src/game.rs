@@ -1,5 +1,5 @@
 use cgmath::{Point3, Vector3};
-use vulkano::command_buffer::{AutoCommandBufferBuilder, SubpassContents};
+use vulkano::command_buffer::{AutoCommandBufferBuilder, SubpassContents, CommandBufferUsage};
 use vulkano::swapchain;
 use vulkano::swapchain::AcquireError;
 use vulkano::sync;
@@ -220,9 +220,10 @@ impl Game {
       self.recreate_swapchain = true;
     }
 
-    let mut builder = AutoCommandBufferBuilder::primary_one_time_submit(
+    let mut builder = AutoCommandBufferBuilder::primary(
       self.graph.device.clone(),
       self.graph.queue.family(),
+      CommandBufferUsage::OneTimeSubmit,
     )
     .unwrap();
     {

@@ -6,22 +6,28 @@ edition = "2018"
 
 [dependencies]
 parking_lot = "0.11"
-itertools = "0.10.0"
-vulkano = "0.20.0"
-vulkano-shaders = "0.20.0"
+itertools = "0.10"
+vulkano = "0.23"
+vulkano-shaders = "0.23.0"
 winit = "0.24"
-vulkano-win = "0.20.0"
-cgmath = "0.17.0"
-gltf = "0.15.2"
-genmesh = "0.6.2"
-rand_distr = "0.4.0"
-rand = "0.8.1"
-vulkano_text = "0.13.0"
-mint = "0.5.6"
-ab_glyph = "0.2.9"
-image = "0.23.13"
-rodio = "0.13.1"
-profiling = "1.0.0"
+vulkano-win = "0.23"
+cgmath = "0.18"
+gltf = "0.16"
+genmesh = "0.6"
+rand_distr = "0.4"
+rand = "0.8"
+vulkano_text = "0.14"
+mint = "0.5"
+ab_glyph = "0.2"
+image = "0.23"
+rodio = "0.14"
+profiling = "1.0"
+
+[patch.crates-io]
+vulkano = {path = "../vulkano/vulkano"}
+vulkano-shaders = {path = "../vulkano/vulkano-shaders"}
+vulkano-win = {path = "../vulkano/vulkano-win"}
+vulkano_text = {path = "../vulkano-text"}
 
 [features]
 profile-with-puffin = ["profiling/profile-with-puffin"]

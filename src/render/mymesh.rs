@@ -7,7 +7,7 @@ use genmesh::{MapToVertices, Neighbors, Triangle, Triangulate, Vertices};
 use mint::Vector3 as MintVector3;
 
 //use cgmath::prelude::*;
-use cgmath::{Decomposed, Transform};
+use cgmath::{Decomposed, Transform, One};
 use cgmath::{InnerSpace, Matrix3, Matrix4, Point2, Point3, Quaternion, SquareMatrix, Vector3};
 
 use itertools::izip;
@@ -97,7 +97,7 @@ impl MyMesh {
   }
 
   pub fn reset_transform(&mut self) {
-    self.data.transform = Matrix4::one();
+    self.data.transform = One::one();
   }
 
   pub fn get_buffers(&self, device: &Arc<Device>) -> Model {

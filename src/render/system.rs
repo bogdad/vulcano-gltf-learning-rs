@@ -3,8 +3,9 @@ use vulkano::buffer::BufferUsage;
 use vulkano::descriptor::descriptor_set::{DescriptorSet, PersistentDescriptorSet};
 use vulkano::device::Device;
 use vulkano::format::Format;
-use vulkano::framebuffer::{Framebuffer, FramebufferAbstract, RenderPassAbstract, Subpass};
+use vulkano::render_pass::{Framebuffer, FramebufferAbstract, RenderPass, Subpass};
 use vulkano::image::{AttachmentImage, ImmutableImage, SwapchainImage};
+use vulkano::image::view::{ImageView, ImageViewType};
 use vulkano::pipeline::depth_stencil::{Compare, DepthStencil};
 use vulkano::pipeline::vertex::TwoBuffersDefinition;
 use vulkano::pipeline::viewport::Viewport;
@@ -30,7 +31,7 @@ use crate::utils::{Normal, Vertex};
 use crate::Graph;
 
 pub struct System {
-  text_texture: Arc<ImmutableImage<Format>>,
+  text_texture: Arc<ImmutableImage>,
   text_sampler: Arc<Sampler>,
   skybox_cubemap: SkyboxCubemap,
   pub pipeline: Arc<dyn GraphicsPipelineAbstract + Send + Sync>,
@@ -194,12 +195,13 @@ impl System {
     };
 
     let layout = self.pipeline.descriptor_set_layout(0).unwrap();
+    let text_image = ImageView::new(self.text_texture.clone()).unwrap();
 
     Arc::new(
       PersistentDescriptorSet::start(layout.clone())
         .add_buffer(uniform_buffer_subbuffer)
         .unwrap()
-        .add_sampled_image(self.text_texture.clone(), self.text_sampler.clone())
+        .add_sampled_image(text_image, self.text_sampler.clone())
         .unwrap()
         .add_buffer(environment_buffer_subbuffer)
         .unwrap()
@@ -224,16 +226,23 @@ impl System {
       let uniform_data = proj;
       self.uniform_skybox_buffer.next(uniform_data).unwrap()
     };
+
+    let color_buffer_view = ImageView::new(self.color_buffer.clone()).unwrap();
+    let depth_buffer_view = ImageView::new(self.depth_buffer.clone()).unwrap();
+    let skybox_texture_view = ImageView::start(self.skybox_cubemap.texture.clone())
+      .with_type(ImageViewType::Cubemap)
+      .build()
+      .unwrap();
     Arc::new(
       PersistentDescriptorSet::start(layout.clone())
         .add_buffer(uniform_buffer_subbuffer)
         .unwrap()
-        .add_image(self.color_buffer.clone())
+        .add_image(color_buffer_view)
         .unwrap()
-        .add_image(self.depth_buffer.clone())
+        .add_image(depth_buffer_view)
         .unwrap()
         .add_sampled_image(
-          self.skybox_cubemap.texture.clone(),
+          skybox_texture_view,
           self.skybox_cubemap.sampler.clone(),
         )
         .unwrap()
@@ -272,7 +281,7 @@ fn window_size_dependent_setup(
   skybox_vs: &shaders::skybox::vs::Shader,
   skybox_fs: &shaders::skybox::fs::Shader,
   images: &[Arc<SwapchainImage<Window>>],
-  render_pass: Arc<dyn RenderPassAbstract + Send + Sync>,
+  render_pass: Arc<RenderPass>,
 ) -> (
   Arc<dyn GraphicsPipelineAbstract + Send + Sync>,
   Arc<dyn GraphicsPipelineAbstract + Send + Sync>,
@@ -294,15 +303,19 @@ fn window_size_dependent_setup(
   let framebuffers = images
     .iter()
     .map(|image| {
+      let view = ImageView::new(image.clone()).unwrap();
+      let depth_view = ImageView::new(depth_buffer.clone()).unwrap();
+      let depth2_view = ImageView::new(depth_buffer2.clone()).unwrap();
+      let color_view = ImageView::new(color_buffer.clone()).unwrap();
       Arc::new(
         Framebuffer::start(render_pass.clone())
-          .add(image.clone())
+          .add(view)
           .unwrap()
-          .add(depth_buffer.clone())
+          .add(depth_view)
           .unwrap()
-          .add(color_buffer.clone())
+          .add(color_view)
           .unwrap()
-          .add(depth_buffer2.clone())
+          .add(depth2_view)
           .unwrap()
           .build()
           .unwrap(),

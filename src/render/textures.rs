@@ -1,7 +1,7 @@
 use image::{Pixel, RgbImage};
 use vulkano::device::Queue;
 use vulkano::format::Format;
-use vulkano::image::{Dimensions, ImmutableImage, MipmapsCount};
+use vulkano::image::{ImageDimensions, ImmutableImage, MipmapsCount};
 use vulkano::sync::GpuFuture;
 
 use std::sync::Arc;
@@ -18,11 +18,12 @@ impl Textures {
     Textures { texture }
   }
 
-  pub fn draw(&self, queue: &Arc<Queue>) -> (Arc<ImmutableImage<Format>>, Box<dyn GpuFuture>) {
+  pub fn draw(&self, queue: &Arc<Queue>) -> (Arc<ImmutableImage>, Box<dyn GpuFuture>) {
     let (texture, future) = {
-      let dimensions = Dimensions::Dim2d {
+      let dimensions = ImageDimensions::Dim2d {
         width: self.texture.dimensions().0,
         height: self.texture.dimensions().1,
+        array_layers: 1,
       };
       println!("texture dimensions {:?}", dimensions);
       ImmutableImage::from_iter(

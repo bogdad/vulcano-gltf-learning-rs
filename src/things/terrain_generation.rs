@@ -1,7 +1,6 @@
 // translation of https://github.com/sftd/blender-addons/blob/master/add_mesh_ant_landscape.py
 // into rust
 
-use crate::Model;
 use cgmath::prelude::*;
 use cgmath::{Matrix4, One, Point2, Point3, Rad, Vector3};
 use genmesh::{MapToVertices, Neighbors, Polygon, Quad, Triangle, Triangulate, Vertices};
@@ -480,7 +479,7 @@ pub fn execute(
   let mut mesh = MyMesh::new(vertex, tex, tex_offset, normals, index, transform, false);
   mesh.update_transform_2(
     Vector3::new(x, 0.0, z),
-    <Matrix4<f32> as Transform<Point3<f32>>>::one(),
+    Matrix4::<f32>::one(),
     //Matrix4::from_angle_x(Rad(std::f32::consts::FRAC_PI_2)),
     [1.0, 1.0, 1.0],
   );

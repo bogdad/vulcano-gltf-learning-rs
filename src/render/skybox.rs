@@ -1,14 +1,15 @@
 use image::ImageFormat;
 use vulkano::device::Queue;
 use vulkano::format::Format;
-use vulkano::image::{Dimensions, ImmutableImage, MipmapsCount};
+use vulkano::buffer::{BufferUsage, CpuAccessibleBuffer};
+use vulkano::image::{ImageDimensions, ImmutableImage, MipmapsCount, ImageUsage, ImageCreateFlags, ImageLayout};
 use vulkano::sampler::{Filter, MipmapMode, Sampler, SamplerAddressMode};
 use vulkano::sync::GpuFuture;
 
 use std::sync::Arc;
 
 pub struct SkyboxCubemap {
-  pub texture: Arc<ImmutableImage<Format>>,
+  pub texture: Arc<ImmutableImage>,
   pub sampler: Arc<Sampler>,
 }
 
@@ -53,21 +54,48 @@ impl SkyboxCubemap {
 
     let cubemap_images = [img_posx, img_negx, img_posy, img_negy, img_posz, img_negz];
     let mut image_data: Vec<u8> = Vec::new();
+    let mut height = 0;
+    let mut width = 0;
     for image in cubemap_images.iter() {
+      let (w, h) = image.dimensions();
+      height = h;
+      width = width + w;
       let mut image0 = image.clone().into_raw().clone();
       image_data.append(&mut image0);
     }
 
-    let (texture, future) = {
-      ImmutableImage::from_iter(
-        image_data.iter().cloned(),
-        Dimensions::Cubemap { size: 1024 },
-        MipmapsCount::Specific(6),
-        Format::R8G8B8A8Srgb,
-        queue.clone(),
-      )
-      .unwrap()
-    };
+    let source = CpuAccessibleBuffer::from_iter(
+      queue.device().clone(),
+      BufferUsage::transfer_source(),
+      false,
+      image_data.iter().cloned(),
+    )
+    .unwrap();
+
+    let dimensions = ImageDimensions::Dim2d {
+      width: 1,
+      height: 1,
+      array_layers: 6,
+  };
+
+    let (texture, _) = ImmutableImage::uninitialized(
+      queue.device().clone(),
+      dimensions,
+      Format::R8G8B8A8Srgb,
+      MipmapsCount::One,
+      ImageUsage {
+          transfer_destination: true,
+          sampled: true,
+          ..ImageUsage::none()
+      },
+      ImageCreateFlags {
+          cube_compatible: true,
+          ..ImageCreateFlags::none()
+      },
+      ImageLayout::ShaderReadOnlyOptimal,
+      queue.device().active_queue_families(),
+    )
+    .unwrap();
 
     let sampler = Sampler::new(
       queue.device().clone(),
@@ -83,7 +111,6 @@ impl SkyboxCubemap {
       0.0,
     )
     .unwrap();
-
     (SkyboxCubemap { texture, sampler }, future.boxed())
   }
 }
