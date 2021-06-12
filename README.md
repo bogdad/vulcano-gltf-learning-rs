@@ -5,6 +5,7 @@
 
 - [ ] how do we make terrain under the clouds
 - [ ] how do we make clouds transparent
+- [x] how upgrading to vulkano 0.23 turns out very hard
 - [x] how do we notice a thing to improve in profile
 - [x] how do we profile
 - [x] how do we add power lines to each sky segment
@@ -21,6 +22,15 @@
 - [x] how do we generate random "cloud like landcapes" on the fly
 - [ ] how do vertex normals work
 - [x] how do coordinate systems work
+
+## how upgrading to vulkano 0.23 turns out very hard
+
+trying to dig into `"clean up finished" taking a lot of time` (see next item)
+led me to get the latest vulkano, and that is hard.
+
+cubemaps seem broken, but thats cause i dont really understand whats happenning there, fixing.
+![cubemaps broken](./images/25.png)
+
 
 ## how do we notice a thing to improve in profile
 

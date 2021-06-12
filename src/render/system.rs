@@ -64,7 +64,7 @@ impl System {
       1.0,
     )
     .unwrap();
-    let (skybox_cubemap, skybox_future) = SkyboxCubemap::new(&graph.queue);
+    let (skybox_cubemap, tex_future) = SkyboxCubemap::new(&graph.queue);
 
     let (pipeline, pipeline_skybox, framebuffers, color_buffer, depth_buffer) =
       window_size_dependent_setup(
@@ -116,9 +116,10 @@ impl System {
         color_buffer,
         depth_buffer,
       },
-      text_future.join(skybox_future).boxed(),
+      text_future.join(tex_future).boxed(),
     )
   }
+
   #[profiling::function]
   pub fn main_set(
     &self,

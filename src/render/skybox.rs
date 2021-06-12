@@ -2,9 +2,12 @@ use image::ImageFormat;
 use vulkano::device::Queue;
 use vulkano::format::Format;
 use vulkano::buffer::{BufferUsage, CpuAccessibleBuffer};
+use vulkano::command_buffer::PrimaryAutoCommandBuffer;
+use vulkano::command_buffer::PrimaryCommandBuffer;
 use vulkano::image::{ImageDimensions, ImmutableImage, MipmapsCount, ImageUsage, ImageCreateFlags, ImageLayout};
 use vulkano::sampler::{Filter, MipmapMode, Sampler, SamplerAddressMode};
 use vulkano::sync::GpuFuture;
+use vulkano::command_buffer::{AutoCommandBufferBuilder, CommandBufferUsage};
 
 use std::sync::Arc;
 
@@ -76,9 +79,9 @@ impl SkyboxCubemap {
       width: 1,
       height: 1,
       array_layers: 6,
-  };
+    };
 
-    let (texture, _) = ImmutableImage::uninitialized(
+    let (texture, init) = ImmutableImage::uninitialized(
       queue.device().clone(),
       dimensions,
       Format::R8G8B8A8Srgb,
@@ -97,6 +100,44 @@ impl SkyboxCubemap {
     )
     .unwrap();
 
+
+    let mut cbb = AutoCommandBufferBuilder::primary(
+      queue.device().clone(),
+      queue.family(),
+      CommandBufferUsage::MultipleSubmit,
+    ).unwrap();
+    cbb.copy_buffer_to_image_dimensions(
+      source,
+      init,
+      [0, 0, 0],
+      dimensions.width_height_depth(),
+      0,
+      dimensions.array_layers(),
+      0,
+    )
+    .unwrap();
+
+
+
+    /*if need_to_generate_mipmaps {
+        generate_mipmaps(
+            &mut cbb,
+            image.clone(),
+            image.dimensions,
+            ImageLayout::ShaderReadOnlyOptimal,
+        );
+    }*/
+
+    let cb: PrimaryAutoCommandBuffer = cbb.build().unwrap();
+
+
+    let future = match cb.execute(queue.clone()) {
+        Ok(f) => f,
+        Err(e) => unreachable!("{:?}", e),
+    };
+
+    //texture.initialized.store(true, Ordering::Relaxed);
+
     let sampler = Sampler::new(
       queue.device().clone(),
       Filter::Linear,
@@ -111,6 +152,6 @@ impl SkyboxCubemap {
       0.0,
     )
     .unwrap();
-    (SkyboxCubemap { texture, sampler }, future.boxed())
+    (SkyboxCubemap{ texture, sampler }, future.boxed())
   }
 }

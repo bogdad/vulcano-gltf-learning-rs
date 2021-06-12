@@ -1,5 +1,4 @@
 use vulkano::buffer::CpuAccessibleBuffer;
-use vulkano::command_buffer::pool::standard::StandardCommandPoolBuilder;
 use vulkano::command_buffer::{AutoCommandBufferBuilder, DynamicState, PrimaryAutoCommandBuffer};
 use vulkano::descriptor::descriptor_set::DescriptorSetsCollection;
 use vulkano::device::Device;

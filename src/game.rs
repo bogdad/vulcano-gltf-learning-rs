@@ -309,8 +309,11 @@ impl Game {
     }
   }
 
+  #[profiling::function]
   pub fn init(&mut self) {
     self.sounds.play();
+    // blit skybox to gpu
+    
   }
 
   pub fn tick(&mut self) {
