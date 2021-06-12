@@ -62,7 +62,7 @@ impl SkyboxCubemap {
     for image in cubemap_images.iter() {
       let (w, h) = image.dimensions();
       height = h;
-      width = width + w;
+      width = w;
       let mut image0 = image.clone().into_raw().clone();
       image_data.append(&mut image0);
     }
@@ -76,8 +76,8 @@ impl SkyboxCubemap {
     .unwrap();
 
     let dimensions = ImageDimensions::Dim2d {
-      width: 1,
-      height: 1,
+      width,
+      height,
       array_layers: 6,
     };
 

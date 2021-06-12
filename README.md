@@ -26,11 +26,13 @@
 ## how upgrading to vulkano 0.23 turns out very hard
 
 trying to dig into `"clean up finished" taking a lot of time` (see next item)
-led me to get the latest vulkano, and that is hard.
+led me to upgrade to the latest vulkano, and that is hard.
 
 cubemaps seem broken, but thats cause i dont really understand whats happenning there, fixing.
 ![cubemaps broken](./images/25.png)
 
+oh no, that was so silly. works now.
+![cubemaps work](./images/26.png)
 
 ## how do we notice a thing to improve in profile
 
