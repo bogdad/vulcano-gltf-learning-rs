@@ -1,4 +1,4 @@
-use cgmath::{Point3, Vector3};
+use cgmath::{Point3};
 use vulkano::command_buffer::{AutoCommandBufferBuilder, SubpassContents, CommandBufferUsage};
 use vulkano::swapchain;
 use vulkano::swapchain::AcquireError;
@@ -9,6 +9,15 @@ use winit::event::{Event, KeyboardInput, VirtualKeyCode, WindowEvent};
 use winit::event_loop::{ControlFlow, EventLoop};
 use profiling;
 
+use bevy_ecs::world::World;
+use bevy_ecs::component::Component;
+use bevy_ecs::schedule::{Schedule, Stage, SystemStage};
+
+use bevy_ecs::event::Events;
+
+use crate::systems::{camera_reacts_to_mouse_movement, movement, camera_reacts_to_keyboard};
+use crate::components::{CameraEnteredEvent};
+
 use std::boxed::Box;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
@@ -18,6 +27,8 @@ use std::path::Path;
 use std::thread::JoinHandle;
 use std::vec::Vec;
 
+use crate::input::MyMouseInput;
+use crate::input::MyKeyboardInput;
 use crate::camera::Camera;
 use crate::executor::Executor;
 use crate::render::System;
@@ -34,12 +45,17 @@ use crate::Graph;
 use crate::Model;
 use crate::Settings;
 use crate::GameEvent;
+use crate::ecs::{Ecs, EcsEvents};
 
 pub struct Game {
+
+  ecs: Ecs,
+
+  camera: Camera,
   settings: Settings,
   graph: Graph,
-  camera: Camera,
-  world: MyWorld,
+
+  myworld: MyWorld,
   sounds: Sounds,
   recreate_swapchain: bool,
   models: Vec<Model>,
@@ -54,27 +70,13 @@ pub struct Game {
   frame_times_avg: CountingWindowAvg,
 }
 
-
-
 impl Game {
+
   pub fn new(settings: Settings, executor: Executor, graph: Graph, event_loop: &EventLoop<GameEvent>) -> Game {
-    // gltf:
-    // "and the default camera sits on the
-    // -Z side looking toward the origin with +Y up"
-    //                               x     y    z
-    // y = up/down
-    // x = left/right
-    // z = close/far
-    let camera = Camera {
-      pos: Point3::new(0.0, -1.0, -1.0),
-      front: Vector3::new(0.0, 0.0, 1.0),
-      up: Vector3::new(0.0, 1.0, 0.0),
-      speed: 0.3,
-      last_x: None,
-      last_y: None,
-      yaw: 0.0,
-      pitch: 0.0,
-    };
+
+    let mut ecs = Ecs::new();
+
+    let camera = Camera::new(&mut ecs);
 
     let strs = (-200..200).map(|i| i.to_string()).collect();
     let texts = Texts::build(strs);
@@ -107,7 +109,7 @@ impl Game {
       ));
     }
 
-    let world = MyWorld::new(settings.clone(), executor, &graph, sign_posts);
+    let myworld = MyWorld::new(settings.clone(), executor, &graph, sign_posts);
 
     let sounds = Sounds::new();
 
@@ -176,10 +178,11 @@ impl Game {
     let frame_times_avg = CountingWindowAvg::new(30);
 
     Game {
+      ecs,
       settings,
       graph,
       camera,
-      world,
+      myworld,
       recreate_swapchain,
       models,
       sounds,
@@ -193,6 +196,12 @@ impl Game {
       ticker_thread,
       frame_times_avg,
     }
+  }
+
+  #[profiling::function]
+  pub fn init(&mut self) {
+    self.myworld.init(&self.ecs);
+    self.sounds.play();
   }
 
   #[profiling::function]
@@ -215,15 +224,15 @@ impl Game {
     let set = {
       profiling::scope!("main_set");
       self.system.main_set(
-      self.camera.proj(&self.graph),
-      self.world.get_scenes(),
-      self.camera.pos,
+      self.camera.proj(&self.graph, &self.ecs.world),
+      self.myworld.get_scenes(),
+      self.camera.get_pos(&self.ecs.world),
     )
      };
 
     let set_skybox = {
       profiling::scope!("sky_box_set");
-      self.system.skybox_set(self.camera.proj_skybox(&self.graph))
+      self.system.skybox_set(self.camera.proj_skybox(&self.graph, &self.ecs.world))
     };
 
     let (image_num, suboptimal, acquire_future) = {
@@ -272,15 +281,15 @@ impl Game {
     }
     }
     {
-    profiling::scope!("iterate-world-models");
-    for model in self.world.get_models() {
+    profiling::scope!("iterate-myworld-models");
+    for model in self.myworld.get_models() {
       model.draw_indexed(&mut builder, self.system.pipeline.clone(), set.clone());
     }
     }
     builder.next_subpass(SubpassContents::Inline).unwrap();
     {
-      profiling::scope!("iterate-world-models");
-    for model in self.world.get_models_skybox() {
+      profiling::scope!("iterate-myworld-models");
+    for model in self.myworld.get_models_skybox() {
       model.draw_indexed(
         &mut builder,
         self.system.pipeline_skybox.clone(),
@@ -338,13 +347,9 @@ impl Game {
     self.frame_times_avg.add(last_frame);
   }
 
-  #[profiling::function]
-  pub fn init(&mut self) {
-    self.sounds.play();
-  }
-
   pub fn tick(&mut self) {
-    self.world.tick();
+    self.myworld.tick(&self.ecs);
+    self.ecs.tick();
   }
 
   #[profiling::function]
@@ -363,7 +368,7 @@ impl Game {
         event: WindowEvent::ModifiersChanged(modifiers),
         ..
       } => {
-        self.cmd_pressed = modifiers.logo();
+        self.ecs.get_events_mut::<MyKeyboardInput>().send(MyKeyboardInput::CmdPressed(modifiers.logo()))
       }
       Event::WindowEvent {
         event: WindowEvent::CloseRequested,
@@ -382,11 +387,7 @@ impl Game {
         event: WindowEvent::KeyboardInput { input, .. },
         ..
       } => {
-        self.world.react(&input);
-        let camera_moved = self.camera.react(self.world.mode, &input);
-        if camera_moved {
-          self.world.camera_entered(&self.camera.pos);
-        }
+        self.ecs.get_events_mut::<MyKeyboardInput>().send(MyKeyboardInput::Key(input.virtual_keycode));
         if let KeyboardInput {
           virtual_keycode: Some(VirtualKeyCode::Q),
           ..
@@ -402,7 +403,9 @@ impl Game {
         event: WindowEvent::CursorMoved { position, .. },
         ..
       } => {
-        self.camera.react_mouse(&position);
+        self.ecs.get_events_mut::<MyMouseInput>().send(MyMouseInput {
+          position
+        });
       }
       _ => (),
     }
@@ -411,6 +414,7 @@ impl Game {
   fn status_string(&self) -> String {
     let avg = self.frame_times_avg.count();
     let all_avg = self.frame_times_avg.all_count();
-    format!("world {}\ncamera {}\navgftw {:.2} navgft {:.2} ", self.world, self.camera, avg, all_avg)
+    format!("myworld {}\navgftw {:.2} navgft {:.2} ", self.myworld, avg, all_avg)
   }
 }
+

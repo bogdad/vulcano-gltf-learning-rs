@@ -9,7 +9,6 @@ use std::path::Path;
 use std::sync::Arc;
 
 use crate::render::gltfimporter::from_gltf;
-use crate::render::scene::Scene;
 use crate::utils::{Normal, Vertex};
 
 #[derive(Clone, Debug)]

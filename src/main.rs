@@ -42,13 +42,20 @@ mod settings;
 mod shaders;
 mod things;
 mod utils;
-
+mod input;
+mod components;
+mod systems;
+mod ecs;
 
 use executor::Executor;
 use game::Game;
 use render::Model;
 use settings::Settings;
 use shaders::{main, skybox};
+
+use ecs::Ecs;
+use ecs::EcsEvents;
+use camera::Camera;
 
 pub enum GameEvent {
   Frame,
@@ -248,8 +255,8 @@ fn main() {
   };
 
   let mut game = Game::new(settings, executor, graph, &event_loop);
-
   game.init();
+
   event_loop.run(move |event, _, mut control_flow| {
     profiling::scope!("event_loop");
     game.tick();

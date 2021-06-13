@@ -1,6 +1,10 @@
-use cgmath::Point3;
+use cgmath::{Point3};
 use winit::event::{KeyboardInput, VirtualKeyCode};
 use profiling;
+
+use bevy_ecs::event::{ManualEventReader};
+
+use crate::components::CameraEnteredEvent;
 
 use std::fmt;
 
@@ -12,6 +16,7 @@ use crate::sky::Sky;
 use crate::things::PrimitiveSkyBox;
 use crate::Graph;
 use crate::Settings;
+use crate::ecs::Ecs;
 
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub enum Mode {
@@ -45,6 +50,7 @@ pub struct MyWorld {
   sky: Sky,
   sign_posts: Vec<SignPost>,
   skybox: PrimitiveSkyBox,
+  events_camera_entered_reader: Option<ManualEventReader<CameraEnteredEvent>>,
 }
 impl MyWorld {
   pub fn new(
@@ -62,14 +68,24 @@ impl MyWorld {
       sky,
       sign_posts,
       skybox,
+      events_camera_entered_reader: None,
     }
   }
 
-  pub fn tick(&mut self) {
-    self.sky.tick(&self.executor);
+  pub fn init(&mut self, ecs: &Ecs) {
+    let reader = ecs.get_events::<CameraEnteredEvent>().get_reader();
+    self.events_camera_entered_reader = Some(reader);
   }
 
-  pub fn camera_entered(&mut self, pos: &Point3<f32>) {
+  pub fn tick(&mut self, ecs: &Ecs) {
+    let events = ecs.get_events::<CameraEnteredEvent>();
+    self.sky.tick(&self.executor);
+    for event in self.events_camera_entered_reader.as_mut().unwrap().iter(&events) {
+      self.camera_entered(&event.position);
+    }
+  }
+
+  fn camera_entered(&mut self, pos: &Point3<f32>) {
     // entering
     if pos.x.rem_euclid(2.0) < f32::EPSILON && pos.z.rem_euclid(2.0) < f32::EPSILON {
       //println!(" entering x, y, z {:?} {:?} {:?}", pos.x, pos.y, pos.z);
@@ -125,3 +141,7 @@ impl fmt::Display for MyWorld {
     write!(f, "mode {:?}", self.mode)
   }
 }
+
+
+
+
