@@ -7,7 +7,7 @@ use genmesh::{MapToVertices, Neighbors, Triangle, Triangulate, Vertices};
 use mint::Vector3 as MintVector3;
 
 //use cgmath::prelude::*;
-use cgmath::{Decomposed, Transform, One};
+use cgmath::{Transform, One};
 use cgmath::{InnerSpace, Matrix3, Matrix4, Point2, Point3, Quaternion, SquareMatrix, Vector3};
 
 use itertools::izip;
@@ -379,7 +379,7 @@ pub fn transform_decomposed(transform: &Trans) -> (Vector3<f32>, Quaternion<f32>
 #[cfg(test)]
 mod test {
   use crate::render::mymesh::MyMesh;
-  use crate::things::primitives::PrimitiveCube;
+  use crate::things::PrimitiveCube;
   use cgmath::{Matrix4, One, Vector3};
 
   fn test_mesh() -> MyMesh {
@@ -391,7 +391,7 @@ mod test {
   pub fn test_identity_transform() {
     let mut cube = test_mesh();
     println!("cube {:?}", cube.data.transform);
-    let (t, r, s) = cube.translation_decomposed();
+    let (t, _, s) = cube.translation_decomposed();
     assert_eq!(t, Vector3::new(1.0, 4.0, 9.0));
     assert_eq!(s, [1.0, 1.0, 1.0]);
     cube.update_transform_2(Vector3::new(0.0, 0.0, 0.0), Matrix4::one(), [1.0, 1.0, 1.0]);

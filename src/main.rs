@@ -6,7 +6,7 @@ use vulkano::instance::{PhysicalDevice, PhysicalDeviceType};
 use vulkano::instance::Instance;
 
 use vulkano::swapchain::{
-  ColorSpace, FullscreenExclusive, PresentMode, Surface, SurfaceTransform, Swapchain,
+  Surface, Swapchain,
   SwapchainCreationError,
 };
 
@@ -24,7 +24,6 @@ extern crate mint;
 extern crate vulkano_text;
 extern crate profiling;
 
-
 use futures::executor::ThreadPoolBuilder;
 
 use std::sync::Arc;
@@ -35,7 +34,7 @@ mod game;
 mod sign_post;
 mod sky;
 mod sounds;
-mod world;
+mod myworld;
 
 mod executor;
 mod render;
@@ -47,7 +46,7 @@ mod utils;
 
 use executor::Executor;
 use game::Game;
-use render::model::Model;
+use render::Model;
 use settings::Settings;
 use shaders::{main, skybox};
 

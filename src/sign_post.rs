@@ -3,9 +3,9 @@ use vulkano::device::Device;
 
 use std::sync::Arc;
 
-use crate::render::model::Model;
-use crate::things::primitives::PrimitiveTriangle;
-use crate::things::texts::Texts;
+use crate::render::Model;
+use crate::things::PrimitiveTriangle;
+use crate::things::Texts;
 
 pub struct SignPost {
   model: Model,

@@ -6,7 +6,7 @@ use vulkano::sync::GpuFuture;
 
 use std::sync::Arc;
 
-use crate::things::texts::Texts;
+use crate::things::Texts;
 
 pub struct Textures {
   texture: RgbImage,

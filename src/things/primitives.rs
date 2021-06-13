@@ -6,9 +6,8 @@ use vulkano::device::Device;
 
 use std::sync::Arc;
 
-use crate::render::model::Model;
-use crate::render::mymesh::MyMesh;
-use crate::render::scene::Scene;
+use crate::render::Model;
+use crate::render::MyMesh;
 
 pub struct PrimitiveCube {
   pub mesh: MyMesh,

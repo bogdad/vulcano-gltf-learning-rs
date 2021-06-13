@@ -5,11 +5,11 @@ use profiling;
 use std::fmt;
 
 use crate::executor::Executor;
-use crate::render::model::Model;
-use crate::render::scene::Scene;
+use crate::render::Model;
+use crate::render::Scene;
 use crate::sign_post::SignPost;
 use crate::sky::Sky;
-use crate::things::primitives::PrimitiveSkyBox;
+use crate::things::PrimitiveSkyBox;
 use crate::Graph;
 use crate::Settings;
 
@@ -38,7 +38,7 @@ impl Mode {
   }
 }
 
-pub struct World {
+pub struct MyWorld {
   settings: Settings,
   executor: Executor,
   pub mode: Mode,
@@ -46,7 +46,7 @@ pub struct World {
   sign_posts: Vec<SignPost>,
   skybox: PrimitiveSkyBox,
 }
-impl World {
+impl MyWorld {
   pub fn new(
     settings: Settings,
     executor: Executor,
@@ -55,7 +55,7 @@ impl World {
   ) -> Self {
     let sky = Sky::new(settings.clone(), &graph.device, 0.0, 0.0);
     let skybox = PrimitiveSkyBox::new(&graph.device);
-    World {
+    Self {
       settings,
       executor,
       mode: Mode::MoveCameraPos,
@@ -120,7 +120,7 @@ impl World {
   }
 }
 
-impl fmt::Display for World {
+impl fmt::Display for MyWorld {
   fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
     write!(f, "mode {:?}", self.mode)
   }

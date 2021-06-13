@@ -1,4 +1,4 @@
-use crate::world::Mode;
+use crate::myworld::Mode;
 use cgmath::{Angle, EuclideanSpace, InnerSpace, Matrix3, Matrix4, Point3, Rad, Vector3};
 
 use winit::dpi::PhysicalPosition;
@@ -119,7 +119,7 @@ impl Camera {
 
     let target = self.pos.to_vec() + self.front;
 
-    let view = Matrix4::look_at(self.pos, Point3::from_vec(target), self.up);
+    let view = Matrix4::look_at_rh(self.pos, Point3::from_vec(target), self.up);
     let scale = Matrix4::from_scale(0.99);
     /*
        mat4 worldview = uniforms.view * uniforms.world;
@@ -157,7 +157,7 @@ impl Camera {
 
     let target = self.pos.to_vec() + self.front;
 
-    let view = Matrix4::look_at(self.pos, Point3::from_vec(target), self.up);
+    let view = Matrix4::look_at_rh(self.pos, Point3::from_vec(target), self.up);
     let scale = Matrix4::from_scale(0.99);
     /*
        mat4 worldview = uniforms.view * uniforms.world;

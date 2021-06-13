@@ -1,10 +1,10 @@
 use vulkano::device::Device;
 
-use cgmath::{Matrix4, Rad, Transform, Vector3};
+use cgmath::{Matrix4, Rad, Vector3};
 
-use crate::render::gltfimporter::from_gltf;
-use crate::render::model::Model;
-use crate::render::mymesh::MyMesh;
+use crate::render::from_gltf;
+use crate::render::Model;
+use crate::render::MyMesh;
 
 use std::path::Path;
 use std::sync::Arc;

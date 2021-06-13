@@ -1,4 +1,4 @@
-use cgmath::{Point3, Vector2, Vector3, Matrix4, One, Rad};
+use cgmath::{Point3, Vector2, Vector3, Matrix4, One};
 use vulkano::device::Device;
 
 use futures::executor::block_on;
@@ -9,13 +9,13 @@ use std::sync::Arc;
 
 use crate::actor::Actor;
 use crate::executor::Executor;
-use crate::render::model::Model;
-use crate::render::scene::Scene;
+use crate::render::Model;
+use crate::render::Scene;
 use crate::shaders::main::fs;
 use crate::settings::Settings;
-use crate::things::terrain_generation;
-use crate::things::terrain_generation::TerrainModel;
-use crate::things::lap::LapMesh;
+use crate::things::TerrainModel;
+use crate::things::LapMesh;
+use crate::things::terrain_execute;
 
 impl Sky {
   const X: f32 = 100.0;
@@ -140,7 +140,7 @@ impl CacheCell {
           let vright = get_border_vec(oright, |tm| tm.terrain.left.clone());
           let vtop = get_border_vec(otop, |tm| tm.terrain.bottom.clone());
           let vbottom = get_border_vec(obottom, |tm| tm.terrain.top.clone());
-          let mut terrain_model = terrain_generation::execute(
+          let mut terrain_model = terrain_execute(
             Sky::SCALE,
             Sky::DETAIL,
             Sky::X as i32,

@@ -1,17 +1,11 @@
 // translation of https://github.com/sftd/blender-addons/blob/master/add_mesh_ant_landscape.py
 // into rust
 
-use cgmath::prelude::*;
-use cgmath::{Matrix4, One, Point2, Point3, Rad, Vector3};
+use cgmath::{Matrix4, One, Point2, Point3, Vector3};
 use genmesh::{MapToVertices, Neighbors, Polygon, Quad, Triangle, Triangulate, Vertices};
 use mint::Vector3 as MintVector3;
 use rand_distr::{Distribution, UnitSphere};
-use vulkano::device::Device;
-
-use std::sync::Arc;
-
-use crate::render::mymesh::MyMesh;
-use crate::render::scene::Scene;
+use crate::render::MyMesh;
 use crate::things::hetero_terrain::hetero_terrain_new_perlin;
 use crate::utils::{Face, Vertex};
 
@@ -431,7 +425,7 @@ pub struct TerrainModel {
   pub bottom: Vec<f32>,
 }
 
-pub fn execute(
+pub fn terrain_execute(
   scale: f32,
   sub_division: i32,
   mesh_size: i32,
