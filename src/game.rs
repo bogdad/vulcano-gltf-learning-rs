@@ -1,6 +1,7 @@
+
 use crate::input::InputEvent;
 use crate::input::GameWantsExitEvent;
-use crate::input::GameEvent;
+use crate::input::{GameEvent, MyKeyStatus};
 use bevy_ecs::event::ManualEventReader;
 use cgmath::{Point3};
 use vulkano::command_buffer::{AutoCommandBufferBuilder, SubpassContents, CommandBufferUsage};
@@ -9,7 +10,7 @@ use vulkano::swapchain::AcquireError;
 use vulkano::sync;
 use vulkano::sync::{FlushError, GpuFuture};
 use vulkano_text::DrawTextTrait;
-use winit::event::{Event, KeyboardInput, VirtualKeyCode, WindowEvent};
+use winit::event::{Event, KeyboardInput, VirtualKeyCode, WindowEvent, ElementState};
 use winit::event_loop::{ControlFlow, EventLoop};
 use profiling;
 
@@ -396,7 +397,13 @@ impl Game {
         event: WindowEvent::KeyboardInput { input, .. },
         ..
       } => {
-        self.ecs.get_events_mut::<InputEvent>().send(InputEvent::KeyBoard(MyKeyboardInput::Key(input.virtual_keycode)));
+        let status = match input.state {
+          ElementState::Released => MyKeyStatus::Released,
+          ElementState::Pressed => MyKeyStatus::Pressed,
+        };
+        self.ecs.get_events_mut::<InputEvent>().send(InputEvent::KeyBoard(MyKeyboardInput::Key{
+          key_code: input.virtual_keycode,
+          status}));
       }
       Event::WindowEvent {
         event: WindowEvent::CursorMoved { position, .. },

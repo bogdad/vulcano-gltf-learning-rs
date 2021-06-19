@@ -1,4 +1,4 @@
-use cgmath::{Vector3, Point3, Array};
+use cgmath::{Vector3, Point3, Array, Point2};
 use bevy_ecs::bundle::Bundle;
 
 #[derive()]
@@ -33,8 +33,8 @@ pub struct CameraId {
   pub pitch: f32,
   pub yaw: f32,
   pub speed: f32,
-  pub last_x: Option<f64>,
-  pub last_y: Option<f64>,
+  pub last_x: Option<f32>,
+  pub last_y: Option<f32>,
 }
 
 impl Default for CameraId {
@@ -64,9 +64,6 @@ impl Default for Acceleration {
 }
 
 impl Acceleration {
-  pub fn reset(&mut self) {
-    self.vec3 = Vector3::from_value(0.0);
-  }
 }
 
 #[derive(Bundle, Default)]
@@ -77,6 +74,40 @@ pub struct CameraBundle {
     pub accel: Acceleration,
 }
 
+#[derive(Default, Debug)]
+pub struct KeyboardState {
+  pub a: bool,
+  pub d: bool,
+  pub w: bool,
+  pub s: bool,
+  pub q: bool,
+  pub e: bool,
+  pub z: bool,
+  pub x: bool,
+  pub c: bool,
+  pub cmd: bool,
+}
+
+#[derive(Debug)]
+pub struct MouseState {
+  pub position: Point2<f32>,
+}
+
+impl Default for MouseState {
+  fn default() -> MouseState {
+    MouseState {
+      position: Point2::from_value(0.0),
+    }
+  }
+}
+
+#[derive(Default, Debug)]
+pub struct InputState {
+  pub keyboard: KeyboardState,
+  pub mouse: MouseState,
+}
+
+#[derive(Debug, Default)]
 pub struct GameState {
-  pub cmd_pressed: bool,
+  pub input: InputState,
 }

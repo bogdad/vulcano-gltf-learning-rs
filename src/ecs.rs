@@ -7,8 +7,9 @@ use bevy_ecs::schedule::{Schedule, SystemStage, Stage};
 use bevy_ecs::system::IntoSystem;
 use bevy_ecs::component::Component;
 
-use crate::input::{MyKeyboardInput, MyMouseInput, GameEvent};
+use crate::input::{GameEvent};
 use crate::systems::*;
+use crate::components::*;
 
 pub struct Ecs {
   pub world: World,
@@ -22,13 +23,15 @@ impl Ecs {
     world.insert_resource(Events::<GameEvent>::default());
     world.insert_resource(Events::<InputEvent>::default());
 
+    world.insert_resource(InputState::default());
+
     let mut schedule = Schedule::default();
     schedule.add_stage("update", SystemStage::parallel()
         .with_system(Events::<InputEvent>::update_system.system())
         .with_system(Events::<GameEvent>::update_system.system())
+        .with_system(input_state_from_game_events.system())
         .with_system(game_reacts_to_keyboard.system())
-        .with_system(camera_reacts_to_keyboard.system())
-        .with_system(camera_reacts_to_mouse_movement.system())
+        .with_system(camera_reacts_to_input.system())
         .with_system(velocity_accel.system())
         .with_system(movement.system())
     );
@@ -59,10 +62,6 @@ impl Ecs {
 
   pub fn get_events_mut<T: Component>(&mut self) -> Mut<Events::<T>> {
     return self.world.get_resource_mut::<Events<T>>().unwrap();
-  }
-
-  pub fn gr<T: Component>(world: &World) -> &Events<T> {
-    world.get_resource::<Events<T>>().unwrap()
   }
 
   pub fn tick(&mut self) {

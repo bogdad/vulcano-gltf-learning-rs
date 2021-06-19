@@ -119,7 +119,7 @@ impl Camera {
 
   pub fn to_string(&self, world: &World) -> String {
     let pos = world.get_entity(self.camera_entity).unwrap().get::<Position>().unwrap().point3;
-    let camera_id = world.get_entity(self.camera_entity).unwrap().get::<CameraId>().unwrap();
+    //let camera_id = world.get_entity(self.camera_entity).unwrap().get::<CameraId>().unwrap();
     format!("camera {:?}", pos)
   }
 }
