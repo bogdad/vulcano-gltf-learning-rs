@@ -51,13 +51,32 @@ impl Default for CameraId {
   }
 }
 
+pub struct Acceleration {
+  pub vec3: Vector3<f32>,
+}
+
+impl Default for Acceleration {
+  fn default() -> Acceleration {
+    Acceleration {
+      vec3: Vector3::from_value(0.0),
+    }
+  }
+}
+
+impl Acceleration {
+  pub fn reset(&mut self) {
+    self.vec3 = Vector3::from_value(0.0);
+  }
+}
+
 #[derive(Bundle, Default)]
 pub struct CameraBundle {
     pub camera: CameraId,
     pub position: Position,
     pub velocity: Velocity,
+    pub accel: Acceleration,
 }
 
-pub struct CameraEnteredEvent {
-  pub position: Point3<f32>,
+pub struct GameState {
+  pub cmd_pressed: bool,
 }

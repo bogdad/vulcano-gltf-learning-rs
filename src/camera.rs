@@ -6,7 +6,7 @@ use crate::Graph;
 
 use bevy_ecs::world::World;
 use bevy_ecs::entity::Entity;
-use crate::components::{CameraBundle, Position, CameraId, Velocity};
+use crate::components::{CameraBundle, Position, CameraId};
 use crate::ecs::Ecs;
 
 #[derive(Debug)]
@@ -115,5 +115,11 @@ impl Camera {
       proj: proj.into(),
       camera_position: pos.into(),
     }
+  }
+
+  pub fn to_string(&self, world: &World) -> String {
+    let pos = world.get_entity(self.camera_entity).unwrap().get::<Position>().unwrap().point3;
+    let camera_id = world.get_entity(self.camera_entity).unwrap().get::<CameraId>().unwrap();
+    format!("camera {:?}", pos)
   }
 }

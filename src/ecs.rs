@@ -1,4 +1,5 @@
 
+use crate::input::InputEvent;
 use bevy_ecs::change_detection::Mut;
 use bevy_ecs::event::Events;
 use bevy_ecs::world::World;
@@ -6,37 +7,30 @@ use bevy_ecs::schedule::{Schedule, SystemStage, Stage};
 use bevy_ecs::system::IntoSystem;
 use bevy_ecs::component::Component;
 
-use crate::components::CameraEnteredEvent;
-use crate::input::{MyKeyboardInput, MyMouseInput};
-use crate::systems::{camera_reacts_to_keyboard, camera_reacts_to_mouse_movement, movement};
+use crate::input::{MyKeyboardInput, MyMouseInput, GameEvent};
+use crate::systems::*;
 
 pub struct Ecs {
   pub world: World,
   schedule: Schedule,
 }
 
-pub struct EcsEvents<'a> {
-  pub events_keyboard: &'a Events<MyKeyboardInput>,
-  pub events_mouse: &'a Events<MyMouseInput>,
-  pub events_camera: &'a Events<CameraEnteredEvent>,
-}
-
 impl Ecs {
   pub fn new() -> Self {
     let mut world = World::default();
 
-    world.insert_resource(Events::<MyMouseInput>::default());
-    world.insert_resource(Events::<MyKeyboardInput>::default());
-    world.insert_resource(Events::<CameraEnteredEvent>::default());
+    world.insert_resource(Events::<GameEvent>::default());
+    world.insert_resource(Events::<InputEvent>::default());
 
     let mut schedule = Schedule::default();
     schedule.add_stage("update", SystemStage::parallel()
-        .with_system(Events::<MyMouseInput>::update_system.system())
-        .with_system(Events::<MyKeyboardInput>::update_system.system())
-        .with_system(Events::<CameraEnteredEvent>::update_system.system())
-        .with_system(movement.system())
+        .with_system(Events::<InputEvent>::update_system.system())
+        .with_system(Events::<GameEvent>::update_system.system())
+        .with_system(game_reacts_to_keyboard.system())
         .with_system(camera_reacts_to_keyboard.system())
         .with_system(camera_reacts_to_mouse_movement.system())
+        .with_system(velocity_accel.system())
+        .with_system(movement.system())
     );
 
     let ecs = Ecs {

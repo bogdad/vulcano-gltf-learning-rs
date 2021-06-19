@@ -1,3 +1,7 @@
+use crate::input::InputEvent;
+use crate::input::GameWantsExitEvent;
+use crate::input::GameEvent;
+use bevy_ecs::event::ManualEventReader;
 use cgmath::{Point3};
 use vulkano::command_buffer::{AutoCommandBufferBuilder, SubpassContents, CommandBufferUsage};
 use vulkano::swapchain;
@@ -9,20 +13,12 @@ use winit::event::{Event, KeyboardInput, VirtualKeyCode, WindowEvent};
 use winit::event_loop::{ControlFlow, EventLoop};
 use profiling;
 
-use bevy_ecs::world::World;
-use bevy_ecs::component::Component;
-use bevy_ecs::schedule::{Schedule, Stage, SystemStage};
-
-use bevy_ecs::event::Events;
-
-use crate::systems::{camera_reacts_to_mouse_movement, movement, camera_reacts_to_keyboard};
-use crate::components::{CameraEnteredEvent};
+use bevy_ecs::event::{Events, EventReader};
 
 use std::boxed::Box;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
-use std::time::Instant;
-use std::time::Duration;
+use std::time::{Instant, Duration};
 use std::path::Path;
 use std::thread::JoinHandle;
 use std::vec::Vec;
@@ -44,12 +40,12 @@ use crate::myworld::MyWorld;
 use crate::Graph;
 use crate::Model;
 use crate::Settings;
-use crate::GameEvent;
-use crate::ecs::{Ecs, EcsEvents};
+use crate::ecs::{Ecs};
 
 pub struct Game {
 
   ecs: Ecs,
+  events_reader: Option<ManualEventReader<GameEvent>>,
 
   camera: Camera,
   settings: Settings,
@@ -164,7 +160,7 @@ impl Game {
             std::thread::sleep(sleep);
           } else {
           }
-          let result = event_loop_proxy.send_event(GameEvent::Frame);
+          let result = event_loop_proxy.send_event(GameEvent::Draw());
           match result {
             Ok(()) => (),
             Err(_) => {
@@ -179,6 +175,7 @@ impl Game {
 
     Game {
       ecs,
+      events_reader: None,
       settings,
       graph,
       camera,
@@ -202,6 +199,8 @@ impl Game {
   pub fn init(&mut self) {
     self.myworld.init(&self.ecs);
     self.sounds.play();
+    let reader = self.ecs.get_events::<GameEvent>().get_reader();
+    self.events_reader = Some(reader);
   }
 
   #[profiling::function]
@@ -355,10 +354,20 @@ impl Game {
   #[profiling::function]
   pub fn gloop(&mut self, event: Event<GameEvent>, control_flow: &mut ControlFlow) {
     *control_flow = ControlFlow::Wait;
+    let events = self.ecs.get_events::<GameEvent>();
+    for event in self.events_reader.as_mut().unwrap().iter(events) {
+      match event {
+        GameEvent::Game(GameWantsExitEvent {}) => {
+          self.game_exited.store(true, Ordering::Release);
+          *control_flow = ControlFlow::Exit;
+        }
+        _ => {}
+      }
+    }
     match event {
       Event::UserEvent(game_event) => {
         match game_event {
-          GameEvent::Frame => {
+          GameEvent::Draw() => {
             self.draw();
           }
           _ => (),
@@ -368,7 +377,7 @@ impl Game {
         event: WindowEvent::ModifiersChanged(modifiers),
         ..
       } => {
-        self.ecs.get_events_mut::<MyKeyboardInput>().send(MyKeyboardInput::CmdPressed(modifiers.logo()))
+        self.ecs.get_events_mut::<InputEvent>().send(InputEvent::KeyBoard(MyKeyboardInput::CmdPressed(modifiers.logo())))
       }
       Event::WindowEvent {
         event: WindowEvent::CloseRequested,
@@ -387,34 +396,25 @@ impl Game {
         event: WindowEvent::KeyboardInput { input, .. },
         ..
       } => {
-        self.ecs.get_events_mut::<MyKeyboardInput>().send(MyKeyboardInput::Key(input.virtual_keycode));
-        if let KeyboardInput {
-          virtual_keycode: Some(VirtualKeyCode::Q),
-          ..
-        } = input
-        {
-          if self.cmd_pressed {
-            self.game_exited.store(true, Ordering::Release);
-            *control_flow = ControlFlow::Exit;
-          }
-        }
+        self.ecs.get_events_mut::<InputEvent>().send(InputEvent::KeyBoard(MyKeyboardInput::Key(input.virtual_keycode)));
       }
       Event::WindowEvent {
         event: WindowEvent::CursorMoved { position, .. },
         ..
       } => {
-        self.ecs.get_events_mut::<MyMouseInput>().send(MyMouseInput {
+        self.ecs.get_events_mut::<InputEvent>().send(InputEvent::Mouse(MyMouseInput {
           position
-        });
+        }));
       }
       _ => (),
     }
   }
 
   fn status_string(&self) -> String {
+    let camera_status = self.camera.to_string(&self.ecs.world);
     let avg = self.frame_times_avg.count();
     let all_avg = self.frame_times_avg.all_count();
-    format!("myworld {}\navgftw {:.2} navgft {:.2} ", self.myworld, avg, all_avg)
+    format!("camera {}\nmyworld {}\navgftw {:.2} navgft {:.2} ", camera_status, self.myworld, avg, all_avg)
   }
 }
 

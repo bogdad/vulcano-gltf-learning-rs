@@ -1,10 +1,9 @@
+use crate::GameEvent;
 use cgmath::{Point3};
 use winit::event::{KeyboardInput, VirtualKeyCode};
 use profiling;
 
 use bevy_ecs::event::{ManualEventReader};
-
-use crate::components::CameraEnteredEvent;
 
 use std::fmt;
 
@@ -50,7 +49,7 @@ pub struct MyWorld {
   sky: Sky,
   sign_posts: Vec<SignPost>,
   skybox: PrimitiveSkyBox,
-  events_camera_entered_reader: Option<ManualEventReader<CameraEnteredEvent>>,
+  events_camera_entered_reader: Option<ManualEventReader<GameEvent>>,
 }
 impl MyWorld {
   pub fn new(
@@ -73,15 +72,20 @@ impl MyWorld {
   }
 
   pub fn init(&mut self, ecs: &Ecs) {
-    let reader = ecs.get_events::<CameraEnteredEvent>().get_reader();
+    let reader = ecs.get_events::<GameEvent>().get_reader();
     self.events_camera_entered_reader = Some(reader);
   }
 
   pub fn tick(&mut self, ecs: &Ecs) {
-    let events = ecs.get_events::<CameraEnteredEvent>();
+    let events = ecs.get_events::<GameEvent>();
     self.sky.tick(&self.executor);
     for event in self.events_camera_entered_reader.as_mut().unwrap().iter(&events) {
-      self.camera_entered(&event.position);
+      match event {
+        GameEvent::Camera(event) => {
+          self.camera_entered(&event.position);
+        }
+        _ => {}
+      }
     }
   }
 

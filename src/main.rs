@@ -1,3 +1,4 @@
+use crate::input::GameEvent;
 use vulkano::device::{Device, DeviceExtensions, Queue};
 use vulkano::format::Format;
 use vulkano::render_pass::RenderPass;
@@ -52,14 +53,6 @@ use game::Game;
 use render::Model;
 use settings::Settings;
 use shaders::{main, skybox};
-
-use ecs::Ecs;
-use ecs::EcsEvents;
-use camera::Camera;
-
-pub enum GameEvent {
-  Frame,
-}
 
 pub struct Graph {
   surface: Arc<Surface<Window>>,
