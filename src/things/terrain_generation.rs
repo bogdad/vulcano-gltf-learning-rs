@@ -5,6 +5,7 @@ use cgmath::{Matrix4, One, Point2, Point3, Vector3};
 use genmesh::{MapToVertices, Neighbors, Polygon, Quad, Triangle, Triangulate, Vertices};
 use mint::Vector3 as MintVector3;
 use rand_distr::{Distribution, UnitSphere};
+use profiling;
 use crate::render::MyMesh;
 use crate::things::hetero_terrain::hetero_terrain_new_perlin;
 use crate::utils::{Face, Vertex};
@@ -425,6 +426,7 @@ pub struct TerrainModel {
   pub bottom: Vec<f32>,
 }
 
+#[profiling::function]
 pub fn terrain_execute(
   scale: f32,
   sub_division: i32,

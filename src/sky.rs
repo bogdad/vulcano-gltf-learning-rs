@@ -6,6 +6,7 @@ use futures::future::RemoteHandle;
 use parking_lot::RwLock;
 use std::cmp::Ordering;
 use std::sync::Arc;
+use profiling;
 
 use crate::actor::Actor;
 use crate::executor::Executor;
@@ -173,6 +174,7 @@ impl CacheCell {
     self.future = Some(executor.do_background(pinned));
   }
 
+  #[profiling::function]
   fn block(&mut self) {
     {
       let read_locked = self.inner.read();

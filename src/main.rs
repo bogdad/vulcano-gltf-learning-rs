@@ -222,7 +222,11 @@ impl Graph {
 fn main() {
   let mut thread_pool_builder = ThreadPoolBuilder::new();
   thread_pool_builder.name_prefix("background").pool_size(2);
-  let thread_pool = thread_pool_builder.create().unwrap();
+  let thread_pool = thread_pool_builder
+    .after_start(|i| {
+      profiling::register_thread!();
+    })
+    .create().unwrap();
 
   let event_loop = EventLoop::<GameEvent>::with_user_event();
   let graph = Graph::new(&event_loop);
