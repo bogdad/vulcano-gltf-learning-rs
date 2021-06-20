@@ -152,15 +152,19 @@ impl Game {
       std::thread::Builder::new()
         .name(format!("ticker"))
         .spawn(move || {
+          profiling::register_thread!("ticker");
           while !game_exited_local.load(Ordering::Acquire) {
             let last_frame_took = last_frame_took_clone.load(Ordering::Acquire);
             // 1000 ms / 30 fps = 33 ms
             let last_frame_took_duration = Duration::from_millis(last_frame_took as u64);
             let interval = std::time::Duration::from_millis(33);
             if interval > last_frame_took_duration {
+              profiling::scope!("sleeping");
               let sleep = interval - last_frame_took_duration;
-              std::thread::sleep(sleep);
+              let now = Instant::now();
+              mysleep_until(now, now + sleep);
             } else {
+              println!("last frame was {}", last_frame_took_duration.as_millis());
             }
             let result = event_loop_proxy.send_event(GameEvent::Draw());
             match result {
@@ -169,7 +173,10 @@ impl Game {
                 break;
               }
             }
-            let _ = frame_signal_clone.wait_and_reset();
+            {
+              profiling::scope!("waiting for draw");
+              let _ = frame_signal_clone.wait_and_reset();
+            }
           }
         })
         .unwrap(),
@@ -213,12 +220,13 @@ impl Game {
     self.i_frame = self.i_frame + 1;
     {
       profiling::scope!("cleanup_finished");
-      if self.i_frame % 30 == 0 {
-        self.previous_frame_end.as_mut().unwrap().cleanup_finished();
-      }
+      //if self.i_frame % 2 == 0 {
+      self.previous_frame_end.as_mut().unwrap().cleanup_finished();
+      //}
     }
     if self.recreate_swapchain {
       profiling::scope!("recreate_swap_chain");
+      self.previous_frame_end.as_mut().unwrap().cleanup_finished();
       self.graph.recreate_swapchain();
       self.system.recreate_swapchain(&self.graph);
       self.recreate_swapchain = false;
@@ -352,6 +360,7 @@ impl Game {
     self.frame_times_avg.add(last_frame);
   }
 
+  #[profiling::function]
   pub fn tick(&mut self) {
     self.myworld.tick(&self.ecs);
     self.ecs.tick();
@@ -445,5 +454,13 @@ impl Game {
       "camera {}\nmyworld {}\navgftw {:.2} navgft {:.2} ",
       camera_status, self.myworld, avg, all_avg
     )
+  }
+}
+
+pub fn mysleep_until(now: Instant, t: Instant) {
+  let mut cur = now;
+  while cur < t {
+    std::thread::sleep(Duration::from_millis(0));
+    cur = Instant::now();
   }
 }

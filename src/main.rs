@@ -1,15 +1,12 @@
 use crate::input::GameEvent;
 use vulkano::device::{Device, DeviceExtensions, Queue};
 use vulkano::format::Format;
-use vulkano::render_pass::RenderPass;
 use vulkano::image::{ImageUsage, SwapchainImage};
-use vulkano::instance::{PhysicalDevice, PhysicalDeviceType};
 use vulkano::instance::Instance;
+use vulkano::instance::{PhysicalDevice, PhysicalDeviceType};
+use vulkano::render_pass::RenderPass;
 
-use vulkano::swapchain::{
-  Surface, Swapchain,
-  SwapchainCreationError,
-};
+use vulkano::swapchain::{Surface, Swapchain, SwapchainCreationError};
 
 use vulkano_text::DrawText;
 use vulkano_win::VkSurfaceBuild;
@@ -18,12 +15,11 @@ use winit::dpi::PhysicalSize;
 use winit::event_loop::EventLoop;
 use winit::window::{Window, WindowBuilder};
 
-
 extern crate futures;
 extern crate itertools;
 extern crate mint;
-extern crate vulkano_text;
 extern crate profiling;
+extern crate vulkano_text;
 
 use futures::executor::ThreadPoolBuilder;
 
@@ -32,21 +28,21 @@ use std::sync::Arc;
 mod actor;
 mod camera;
 mod game;
+mod myworld;
 mod sign_post;
 mod sky;
 mod sounds;
-mod myworld;
 
+mod components;
+mod ecs;
 mod executor;
+mod input;
 mod render;
 mod settings;
 mod shaders;
+mod systems;
 mod things;
 mod utils;
-mod input;
-mod components;
-mod systems;
-mod ecs;
 
 use executor::Executor;
 use game::Game;
@@ -118,9 +114,7 @@ impl Graph {
       let format = caps.supported_formats[0].0;
       let dimensions: [u32; 2] = surface.window().inner_size().into();
 
-      Swapchain::start(
-        device.clone(),
-        surface.clone())
+      Swapchain::start(device.clone(), surface.clone())
         .num_images(caps.min_image_count)
         .format(format)
         .dimensions(dimensions)
@@ -202,7 +196,8 @@ impl Graph {
 
   pub fn recreate_swapchain(&mut self) {
     let dimensions: [u32; 2] = self.surface.window().inner_size().into();
-    let (new_swapchain, new_images) = match self.swapchain.recreate().dimensions(dimensions).build() {
+    let (new_swapchain, new_images) = match self.swapchain.recreate().dimensions(dimensions).build()
+    {
       Ok(r) => r,
       Err(SwapchainCreationError::UnsupportedDimensions) => return,
       Err(e) => panic!("Failed to recreate swapchain: {:?}", e),
@@ -221,12 +216,13 @@ impl Graph {
 
 fn main() {
   let mut thread_pool_builder = ThreadPoolBuilder::new();
-  thread_pool_builder.name_prefix("background").pool_size(2);
-  let thread_pool = thread_pool_builder
+  thread_pool_builder
+    .name_prefix("background")
+    .pool_size(3)
     .after_start(|i| {
       profiling::register_thread!();
-    })
-    .create().unwrap();
+    });
+  let thread_pool = thread_pool_builder.create().unwrap();
 
   let event_loop = EventLoop::<GameEvent>::with_user_event();
   let graph = Graph::new(&event_loop);

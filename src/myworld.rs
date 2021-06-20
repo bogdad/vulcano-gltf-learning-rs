@@ -1,12 +1,13 @@
 use crate::GameEvent;
-use cgmath::{Point3};
-use winit::event::{KeyboardInput, VirtualKeyCode};
+use cgmath::Point3;
 use profiling;
+use winit::event::{KeyboardInput, VirtualKeyCode};
 
-use bevy_ecs::event::{ManualEventReader};
+use bevy_ecs::event::ManualEventReader;
 
 use std::fmt;
 
+use crate::ecs::Ecs;
 use crate::executor::Executor;
 use crate::render::Model;
 use crate::render::Scene;
@@ -15,7 +16,6 @@ use crate::sky::Sky;
 use crate::things::PrimitiveSkyBox;
 use crate::Graph;
 use crate::Settings;
-use crate::ecs::Ecs;
 
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub enum Mode {
@@ -76,10 +76,16 @@ impl MyWorld {
     self.events_camera_entered_reader = Some(reader);
   }
 
+  #[profiling::function]
   pub fn tick(&mut self, ecs: &Ecs) {
     let events = ecs.get_events::<GameEvent>();
     self.sky.tick(&self.executor);
-    for event in self.events_camera_entered_reader.as_mut().unwrap().iter(&events) {
+    for event in self
+      .events_camera_entered_reader
+      .as_mut()
+      .unwrap()
+      .iter(&events)
+    {
       match event {
         GameEvent::Camera(event) => {
           self.camera_entered(&event.position);
@@ -95,20 +101,6 @@ impl MyWorld {
       //println!(" entering x, y, z {:?} {:?} {:?}", pos.x, pos.y, pos.z);
     }
     self.sky.camera_entered(pos);
-  }
-
-  pub fn command(&mut self) {
-    self.mode = self.mode.next();
-  }
-
-  pub fn react(&mut self, input: &KeyboardInput) {
-    if let KeyboardInput {
-      virtual_keycode: Some(VirtualKeyCode::Escape),
-      ..
-    } = input
-    {
-      self.command();
-    }
   }
 
   pub fn get_scenes(&self) -> Vec<&Scene> {
@@ -145,7 +137,3 @@ impl fmt::Display for MyWorld {
     write!(f, "mode {:?}", self.mode)
   }
 }
-
-
-
-

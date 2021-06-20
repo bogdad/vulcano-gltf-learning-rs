@@ -104,6 +104,7 @@ impl CacheCell {
     self.future.is_some()
   }
 
+  #[profiling::function]
   fn spawn_region(
     &mut self,
     executor: &Executor,
@@ -186,6 +187,7 @@ impl CacheCell {
     block_on(future.unwrap())
   }
 
+  #[profiling::function]
   fn create_block(
     &mut self,
     executor: &Executor,
@@ -318,26 +320,30 @@ impl Sky {
     }
   }
 
+  #[profiling::function]
   pub fn tick(&mut self, executor: &Executor) {
     let ahead_div = 3.0;
     let x_ahead = Sky::X / ahead_div;
     let z_ahead = Sky::Z / ahead_div;
-
-    self.cache[giiu(0, 0)].create_block(
-      executor,
-      &self.device,
-      &self.lap_mesh,
-      self.x.x,
-      self.z.x,
-      None,
-      None,
-      None,
-      None,
-    );
+    {
+      profiling::scope!("00block");
+      self.cache[giiu(0, 0)].create_block(
+        executor,
+        &self.device,
+        &self.lap_mesh,
+        self.x.x,
+        self.z.x,
+        None,
+        None,
+        None,
+        None,
+      );
+    }
 
     let indices = self.real_inds(Sky::X, Sky::Z);
     let half_indices = self.real_inds(x_ahead, z_ahead);
     if half_indices != (0, 0) {
+      profiling::scope!("sky:spawn");
       // spawn ahead of time model creation
       let ordered_cells = &self.ordered_cells;
       for try_cell in ordered_cells {
@@ -367,6 +373,7 @@ impl Sky {
       }
     }
     if indices != (0, 0) {
+      profiling::scope!("sky:move");
       //println!("indices {:?} x {:?} z {:?} c {:?}",
       //  indices, self.x, self.z, self.c);
       // change the current
