@@ -5,6 +5,7 @@ use crate::input::GameEvent;
 
 use bevy_ecs::change_detection::Mut;
 use bevy_ecs::event::EventWriter;
+use bevy_ecs::query::Changed;
 use bevy_ecs::system::Query;
 use bevy_ecs::system::Res;
 
@@ -12,29 +13,23 @@ use cgmath::{Angle, InnerSpace, Rad, Vector3};
 
 fn react_to_keyboard(
   game_state: &Res<GameState>,
-  mut writer: &mut EventWriter<GameEvent>,
-  mut position: &mut Mut<Position>,
-  mut camera: &mut Mut<CameraId>,
+  position: &mut Mut<Position>,
+  camera: &mut Mut<CameraId>,
 ) {
   if game_state.mode == GameMode::Edit {
     let input_state = &game_state.input;
-    let mut moved = false;
     //let camera_speed = velocity.vec3;
     let zz = camera.front.cross(camera.up).normalize();
     if input_state.keyboard.a {
-      moved = true;
       position.point3 += zz * camera.speed;
     }
     if input_state.keyboard.d {
-      moved = true;
       position.point3 += -zz * camera.speed;
     }
     if input_state.keyboard.w {
-      moved = true;
       position.point3 += camera.speed * camera.front;
     }
     if input_state.keyboard.s {
-      moved = true;
       position.point3 += -camera.speed * camera.front;
     }
     if input_state.keyboard.q {
@@ -55,19 +50,13 @@ fn react_to_keyboard(
       Rad(camera.yaw).sin() * Rad(camera.pitch).cos(),
     );
     camera.front = direction.normalize();
-    if moved {
-      writer.send(GameEvent::Camera(CameraEnteredEvent {
-        position: position.point3,
-      }))
-    }
-  } else {
   }
 }
 
 fn react_to_mouse(
   game_state: &Res<GameState>,
-  mut position: &mut Mut<Position>,
-  mut camera: &mut Mut<CameraId>,
+  position: &mut Mut<Position>,
+  camera: &mut Mut<CameraId>,
 ) {
   let input_state = &game_state.input;
   if let Some(lx) = camera.last_x {
@@ -103,13 +92,21 @@ fn react_to_mouse(
 
 pub fn camera_reacts_to_input(
   game_state: Res<GameState>,
-  mut writer: EventWriter<GameEvent>,
   mut query: Query<(&mut Position, &mut CameraId)>,
 ) {
-  let input_state = &game_state.input;
-  let mode = &game_state.mode;
   for (mut position, mut camera) in query.iter_mut() {
-    react_to_keyboard(&game_state, &mut writer, &mut position, &mut camera);
+    react_to_keyboard(&game_state, &mut position, &mut camera);
     react_to_mouse(&game_state, &mut position, &mut camera);
+  }
+}
+
+pub fn camera_emits_position_changed_event(
+  mut writer: EventWriter<GameEvent>,
+  mut query: Query<(&CameraId, &Position), Changed<Position>>,
+) {
+  for (_camera, position) in query.iter_mut() {
+    writer.send(GameEvent::Camera(CameraEnteredEvent {
+      position: position.point3,
+    }))
   }
 }

@@ -30,6 +30,8 @@ impl Ecs {
       SystemStage::parallel()
         .with_system(Events::<InputEvent>::update_system.system())
         .with_system(Events::<GameEvent>::update_system.system())
+        .with_system(camera_has_speed.system())
+        .with_system(camera_emits_position_changed_event.system())
         .with_system(input_state_from_game_events.system())
         .with_system(game_reacts_to_keyboard.system())
         .with_system(camera_reacts_to_input.system())

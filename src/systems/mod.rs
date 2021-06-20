@@ -14,8 +14,10 @@ use cgmath::Point2;
 use winit::event::VirtualKeyCode;
 
 mod camera;
+mod game_systems;
 
 pub use camera::*;
+pub use game_systems::*;
 
 // This system moves each entity with a Position and Velocity component
 pub fn movement(mut query: Query<(&mut Position, &Velocity)>) {
