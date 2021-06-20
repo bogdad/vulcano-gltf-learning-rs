@@ -2,7 +2,6 @@ use crate::input::GameEvent;
 use crate::input::GameWantsExitEvent;
 use crate::input::InputEvent;
 use bevy_ecs::event::ManualEventReader;
-use bevy_ecs::prelude::EventReader;
 use cgmath::Point3;
 use profiling;
 use vulkano::command_buffer::{AutoCommandBufferBuilder, CommandBufferUsage, SubpassContents};
@@ -13,7 +12,6 @@ use vulkano::sync::{FlushError, GpuFuture};
 use vulkano_text::DrawTextTrait;
 
 use std::boxed::Box;
-use std::mem::ManuallyDrop;
 use std::path::Path;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::Receiver;
@@ -54,7 +52,6 @@ pub struct Game {
   i_frame: u64,
   last_frame_took: u32,
 
-  cmd_pressed: bool,
   pub game_exited: Arc<AtomicBool>,
   frame_times_avg: CountingWindowAvg,
   recv: Receiver<InputEvent>,
@@ -155,7 +152,6 @@ impl Game {
       system,
       i_frame: 0,
       last_frame_took,
-      cmd_pressed: false,
       game_exited,
       frame_times_avg,
       recv,
@@ -169,9 +165,12 @@ impl Game {
     self.init();
     while !self.game_exited.load(Ordering::Acquire) {
       self.wait_for_frame();
-      self.accept_events(&mut reader);
-      self.tick();
-      self.draw();
+      {
+        self.accept_events(&mut reader);
+        self.tick();
+        self.draw();
+        profiling::finish_frame!();
+      }
     }
   }
 
@@ -334,6 +333,7 @@ impl Game {
     self.ecs.tick();
   }
 
+  #[profiling::function]
   pub fn accept_events(&mut self, game_event_reader: &mut ManualEventReader<GameEvent>) {
     loop {
       let events = self.ecs.get_events::<GameEvent>();
@@ -357,6 +357,7 @@ impl Game {
     }
   }
 
+  #[profiling::function]
   pub fn wait_for_frame(&self) {
     let last_frame_took = self.last_frame_took;
     // 1000 ms / 30 fps = 33 ms
@@ -383,10 +384,15 @@ impl Game {
   }
 }
 
+#[profiling::function]
 pub fn mysleep_until(now: Instant, t: Instant) {
   let mut cur = now;
   while cur < t {
-    std::thread::sleep(Duration::from_millis(0));
+    if t - cur > Duration::from_millis(15) {
+      std::thread::sleep(Duration::from_millis(10));
+    } else {
+      std::thread::sleep(Duration::from_millis(0));
+    }
     cur = Instant::now();
   }
 }
