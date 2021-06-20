@@ -31,18 +31,26 @@ pub fn velocity_accel(mut query: Query<(&mut Velocity, &Acceleration)>) {
 }
 
 pub fn game_reacts_to_keyboard(
-  input_state: Res<InputState>,
+  mut game_state: ResMut<GameState>,
   mut event_writer: EventWriter<GameEvent>,
 ) {
+  let input_state = &game_state.input;
   if input_state.keyboard.cmd && input_state.keyboard.q {
     event_writer.send(GameEvent::Game(GameWantsExitEvent {}));
+  }
+  if input_state.keyboard.esc {
+    game_state.mode = match game_state.mode {
+      GameMode::Edit => GameMode::Play,
+      GameMode::Play => GameMode::Edit,
+    }
   }
 }
 
 pub fn input_state_from_game_events(
   mut keyboard_reader: EventReader<InputEvent>,
-  mut input: ResMut<InputState>,
+  mut game_state: ResMut<GameState>,
 ) {
+  let mut input = &mut game_state.input;
   for event in keyboard_reader.iter() {
     match event {
       InputEvent::MouseWheel(MyMouseWheel { delta }) => {
@@ -63,6 +71,12 @@ pub fn input_state_from_game_events(
         key_code: Some(key_code),
         status,
       }) => match key_code {
+        VirtualKeyCode::Escape => {
+          input.keyboard.esc = match status {
+            MyKeyStatus::Released => false,
+            MyKeyStatus::Pressed => true,
+          };
+        }
         VirtualKeyCode::Q => {
           input.keyboard.q = match status {
             MyKeyStatus::Released => false,

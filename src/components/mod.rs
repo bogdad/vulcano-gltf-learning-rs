@@ -1,5 +1,8 @@
 use bevy_ecs::bundle::Bundle;
 use cgmath::{Array, Point2, Point3, Vector3};
+use gltf::accessor::sparse::Indices;
+
+use crate::game::Game;
 
 #[derive()]
 pub struct Position {
@@ -37,6 +40,7 @@ pub struct CameraId {
   pub last_y: Option<f32>,
   pub last_wheel_x: Option<f32>,
   pub last_wheel_y: Option<f32>,
+  pub prev_position: Option<Point3<f32>>,
 }
 
 impl Default for CameraId {
@@ -51,6 +55,7 @@ impl Default for CameraId {
       last_y: None,
       last_wheel_x: None,
       last_wheel_y: None,
+      prev_position: None,
     }
   }
 }
@@ -88,6 +93,7 @@ pub struct KeyboardState {
   pub z: bool,
   pub x: bool,
   pub c: bool,
+  pub esc: bool,
   pub cmd: bool,
 }
 
@@ -112,7 +118,23 @@ pub struct InputState {
   pub mouse: MouseState,
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, PartialEq)]
+pub enum GameMode {
+  Play,
+  Edit,
+}
+
+#[derive(Debug)]
 pub struct GameState {
   pub input: InputState,
+  pub mode: GameMode,
+}
+
+impl Default for GameState {
+  fn default() -> GameState {
+    GameState {
+      input: InputState::default(),
+      mode: GameMode::Play,
+    }
+  }
 }

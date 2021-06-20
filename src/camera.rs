@@ -32,6 +32,7 @@ impl Camera {
           last_wheel_y: None,
           yaw: 0.0,
           pitch: 0.0,
+          prev_position: None,
         },
         ..Default::default()
       })
