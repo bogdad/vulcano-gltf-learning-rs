@@ -1,6 +1,6 @@
-use winit::event::VirtualKeyCode;
-use winit::dpi::PhysicalPosition;
 use cgmath::Point3;
+use winit::dpi::PhysicalPosition;
+use winit::event::{MouseScrollDelta, VirtualKeyCode};
 
 #[derive(Debug)]
 pub enum MyKeyStatus {
@@ -10,7 +10,10 @@ pub enum MyKeyStatus {
 
 #[derive(Debug)]
 pub enum MyKeyboardInput {
-  Key{key_code:Option<VirtualKeyCode>, status: MyKeyStatus},
+  Key {
+    key_code: Option<VirtualKeyCode>,
+    status: MyKeyStatus,
+  },
   CmdPressed(bool),
 }
 
@@ -19,6 +22,10 @@ pub struct MyMouseInput {
   pub position: PhysicalPosition<f64>,
 }
 
+#[derive(Debug)]
+pub struct MyMouseWheel {
+  pub delta: MouseScrollDelta,
+}
 
 #[derive(Default)]
 pub struct GameWantsExitEvent {}
@@ -30,11 +37,12 @@ pub struct CameraEnteredEvent {
 #[derive(Debug)]
 pub enum InputEvent {
   KeyBoard(MyKeyboardInput),
-  Mouse(MyMouseInput),
+  MouseMoved(MyMouseInput),
+  MouseWheel(MyMouseWheel),
 }
 
 pub enum GameEvent {
   Draw(),
   Camera(CameraEnteredEvent),
-  Game(GameWantsExitEvent)
+  Game(GameWantsExitEvent),
 }

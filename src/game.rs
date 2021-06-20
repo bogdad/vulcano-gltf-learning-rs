@@ -1,50 +1,47 @@
-
 use crate::input::InputEvent;
-use crate::input::GameWantsExitEvent;
 use crate::input::{GameEvent, MyKeyStatus};
+use crate::input::{GameWantsExitEvent, MyMouseWheel};
 use bevy_ecs::event::ManualEventReader;
-use cgmath::{Point3};
-use vulkano::command_buffer::{AutoCommandBufferBuilder, SubpassContents, CommandBufferUsage};
+use cgmath::Point3;
+use profiling;
+use vulkano::command_buffer::{AutoCommandBufferBuilder, CommandBufferUsage, SubpassContents};
 use vulkano::swapchain;
 use vulkano::swapchain::AcquireError;
 use vulkano::sync;
 use vulkano::sync::{FlushError, GpuFuture};
 use vulkano_text::DrawTextTrait;
-use winit::event::{Event, KeyboardInput, VirtualKeyCode, WindowEvent, ElementState};
+use winit::event::ElementState;
+use winit::event::{Event, WindowEvent};
 use winit::event_loop::{ControlFlow, EventLoop};
-use profiling;
-
-use bevy_ecs::event::{Events, EventReader};
 
 use std::boxed::Box;
-use std::sync::Arc;
-use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
-use std::time::{Instant, Duration};
 use std::path::Path;
+use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
+use std::sync::Arc;
 use std::thread::JoinHandle;
+use std::time::{Duration, Instant};
 use std::vec::Vec;
 
-use crate::input::MyMouseInput;
-use crate::input::MyKeyboardInput;
 use crate::camera::Camera;
+use crate::ecs::Ecs;
 use crate::executor::Executor;
+use crate::input::MyKeyboardInput;
+use crate::input::MyMouseInput;
+use crate::myworld::MyWorld;
 use crate::render::System;
 use crate::render::Textures;
 use crate::sign_post::SignPost;
 use crate::sounds::Sounds;
-use crate::things::Lap;
-use crate::things::{PrimitiveCube, PrimitiveTriangle};
-use crate::things::Texts;
-use crate::things::Signal;
 use crate::things::CountingWindowAvg;
-use crate::myworld::MyWorld;
+use crate::things::Lap;
+use crate::things::Signal;
+use crate::things::Texts;
+use crate::things::{PrimitiveCube, PrimitiveTriangle};
 use crate::Graph;
 use crate::Model;
 use crate::Settings;
-use crate::ecs::{Ecs};
 
 pub struct Game {
-
   ecs: Ecs,
   events_reader: Option<ManualEventReader<GameEvent>>,
 
@@ -68,9 +65,12 @@ pub struct Game {
 }
 
 impl Game {
-
-  pub fn new(settings: Settings, executor: Executor, graph: Graph, event_loop: &EventLoop<GameEvent>) -> Game {
-
+  pub fn new(
+    settings: Settings,
+    executor: Executor,
+    graph: Graph,
+    event_loop: &EventLoop<GameEvent>,
+  ) -> Game {
     let mut ecs = Ecs::new();
 
     let camera = Camera::new(&mut ecs);
@@ -148,29 +148,32 @@ impl Game {
     let last_frame_took_clone = last_frame_took.clone();
     let frame_signal = Arc::new(Signal::new());
     let frame_signal_clone = frame_signal.clone();
-    let ticker_thread = Some(std::thread::Builder::new()
-    .name(format!("ticker"))
-    .spawn(move ||  {
-        while !game_exited_local.load(Ordering::Acquire) {
-          let last_frame_took = last_frame_took_clone.load(Ordering::Acquire);
-          // 1000 ms / 30 fps = 33 ms
-          let last_frame_took_duration = Duration::from_millis(last_frame_took as u64);
-          let interval = std::time::Duration::from_millis(33);
-          if interval > last_frame_took_duration {
-            let sleep = interval - last_frame_took_duration;
-            std::thread::sleep(sleep);
-          } else {
-          }
-          let result = event_loop_proxy.send_event(GameEvent::Draw());
-          match result {
-            Ok(()) => (),
-            Err(_) => {
-              break;
+    let ticker_thread = Some(
+      std::thread::Builder::new()
+        .name(format!("ticker"))
+        .spawn(move || {
+          while !game_exited_local.load(Ordering::Acquire) {
+            let last_frame_took = last_frame_took_clone.load(Ordering::Acquire);
+            // 1000 ms / 30 fps = 33 ms
+            let last_frame_took_duration = Duration::from_millis(last_frame_took as u64);
+            let interval = std::time::Duration::from_millis(33);
+            if interval > last_frame_took_duration {
+              let sleep = interval - last_frame_took_duration;
+              std::thread::sleep(sleep);
+            } else {
             }
+            let result = event_loop_proxy.send_event(GameEvent::Draw());
+            match result {
+              Ok(()) => (),
+              Err(_) => {
+                break;
+              }
+            }
+            let _ = frame_signal_clone.wait_and_reset();
           }
-          let _ = frame_signal_clone.wait_and_reset();
-        }
-    }).unwrap());
+        })
+        .unwrap(),
+    );
 
     let frame_times_avg = CountingWindowAvg::new(30);
 
@@ -224,28 +227,30 @@ impl Game {
     let set = {
       profiling::scope!("main_set");
       self.system.main_set(
-      self.camera.proj(&self.graph, &self.ecs.world),
-      self.myworld.get_scenes(),
-      self.camera.get_pos(&self.ecs.world),
-    )
-     };
+        self.camera.proj(&self.graph, &self.ecs.world),
+        self.myworld.get_scenes(),
+        self.camera.get_pos(&self.ecs.world),
+      )
+    };
 
     let set_skybox = {
       profiling::scope!("sky_box_set");
-      self.system.skybox_set(self.camera.proj_skybox(&self.graph, &self.ecs.world))
+      self
+        .system
+        .skybox_set(self.camera.proj_skybox(&self.graph, &self.ecs.world))
     };
 
     let (image_num, suboptimal, acquire_future) = {
       profiling::scope!("acquire_next_image");
       let (image_num, suboptimal, acquire_future) =
-      match swapchain::acquire_next_image(self.graph.swapchain.clone(), None) {
-        Ok(r) => r,
-        Err(AcquireError::OutOfDate) => {
-          self.recreate_swapchain = true;
-          return;
-        }
-        Err(e) => panic!("Failed to acquire next image: {:?}", e),
-      };
+        match swapchain::acquire_next_image(self.graph.swapchain.clone(), None) {
+          Ok(r) => r,
+          Err(AcquireError::OutOfDate) => {
+            self.recreate_swapchain = true;
+            return;
+          }
+          Err(e) => panic!("Failed to acquire next image: {:?}", e),
+        };
       (image_num, suboptimal, acquire_future)
     };
 
@@ -262,54 +267,54 @@ impl Game {
     {
       profiling::scope!("begin-render-pass");
       builder
-      .begin_render_pass(
-        self.system.framebuffers[image_num].clone(),
-        SubpassContents::Inline,
-        vec![
-          [0.0, 0.0, 0.0, 1.0].into(),
-          1f32.into(),
-          [0.0, 0.0, 0.0, 1.0].into(),
-          1f32.into(),
-        ],
-      )
-      .unwrap();
+        .begin_render_pass(
+          self.system.framebuffers[image_num].clone(),
+          SubpassContents::Inline,
+          vec![
+            [0.0, 0.0, 0.0, 1.0].into(),
+            1f32.into(),
+            [0.0, 0.0, 0.0, 1.0].into(),
+            1f32.into(),
+          ],
+        )
+        .unwrap();
     }
     {
-    profiling::scope!("iterate-models");
-    for model in &self.models {
-      model.draw_indexed(&mut builder, self.system.pipeline.clone(), set.clone());
-    }
+      profiling::scope!("iterate-models");
+      for model in &self.models {
+        model.draw_indexed(&mut builder, self.system.pipeline.clone(), set.clone());
+      }
     }
     {
-    profiling::scope!("iterate-myworld-models");
-    for model in self.myworld.get_models() {
-      model.draw_indexed(&mut builder, self.system.pipeline.clone(), set.clone());
-    }
+      profiling::scope!("iterate-myworld-models");
+      for model in self.myworld.get_models() {
+        model.draw_indexed(&mut builder, self.system.pipeline.clone(), set.clone());
+      }
     }
     builder.next_subpass(SubpassContents::Inline).unwrap();
     {
       profiling::scope!("iterate-myworld-models");
-    for model in self.myworld.get_models_skybox() {
-      model.draw_indexed(
-        &mut builder,
-        self.system.pipeline_skybox.clone(),
-        set_skybox.clone(),
-      );
-    }
+      for model in self.myworld.get_models_skybox() {
+        model.draw_indexed(
+          &mut builder,
+          self.system.pipeline_skybox.clone(),
+          set_skybox.clone(),
+        );
+      }
     }
     builder.end_render_pass().unwrap();
     {
       profiling::scope!("draw-text");
-    let mut y = 50.0;
-    let status = self.status_string();
-    for line in status.split('\n') {
-      self
-        .graph
-        .draw_text
-        .queue_text(200.0, y, 40.0, [1.0, 1.0, 1.0, 1.0], line);
-      y += 40.0;
-    }
-    builder.draw_text(&mut self.graph.draw_text, image_num);
+      let mut y = 50.0;
+      let status = self.status_string();
+      for line in status.split('\n') {
+        self
+          .graph
+          .draw_text
+          .queue_text(200.0, y, 40.0, [1.0, 1.0, 1.0, 1.0], line);
+        y += 40.0;
+      }
+      builder.draw_text(&mut self.graph.draw_text, image_num);
     }
     let command_buffer = builder.build().unwrap();
 
@@ -366,20 +371,21 @@ impl Game {
       }
     }
     match event {
-      Event::UserEvent(game_event) => {
-        match game_event {
-          GameEvent::Draw() => {
-            self.draw();
-          }
-          _ => (),
+      Event::UserEvent(game_event) => match game_event {
+        GameEvent::Draw() => {
+          self.draw();
         }
-      }
+        _ => (),
+      },
       Event::WindowEvent {
         event: WindowEvent::ModifiersChanged(modifiers),
         ..
-      } => {
-        self.ecs.get_events_mut::<InputEvent>().send(InputEvent::KeyBoard(MyKeyboardInput::CmdPressed(modifiers.logo())))
-      }
+      } => self
+        .ecs
+        .get_events_mut::<InputEvent>()
+        .send(InputEvent::KeyBoard(MyKeyboardInput::CmdPressed(
+          modifiers.logo(),
+        ))),
       Event::WindowEvent {
         event: WindowEvent::CloseRequested,
         ..
@@ -401,17 +407,31 @@ impl Game {
           ElementState::Released => MyKeyStatus::Released,
           ElementState::Pressed => MyKeyStatus::Pressed,
         };
-        self.ecs.get_events_mut::<InputEvent>().send(InputEvent::KeyBoard(MyKeyboardInput::Key{
-          key_code: input.virtual_keycode,
-          status}));
+        self
+          .ecs
+          .get_events_mut::<InputEvent>()
+          .send(InputEvent::KeyBoard(MyKeyboardInput::Key {
+            key_code: input.virtual_keycode,
+            status,
+          }));
+      }
+      Event::WindowEvent {
+        event: WindowEvent::MouseWheel { delta, .. },
+        ..
+      } => {
+        self
+          .ecs
+          .get_events_mut::<InputEvent>()
+          .send(InputEvent::MouseWheel(MyMouseWheel { delta }));
       }
       Event::WindowEvent {
         event: WindowEvent::CursorMoved { position, .. },
         ..
       } => {
-        self.ecs.get_events_mut::<InputEvent>().send(InputEvent::Mouse(MyMouseInput {
-          position
-        }));
+        self
+          .ecs
+          .get_events_mut::<InputEvent>()
+          .send(InputEvent::MouseMoved(MyMouseInput { position }));
       }
       _ => (),
     }
@@ -421,7 +441,9 @@ impl Game {
     let camera_status = self.camera.to_string(&self.ecs.world);
     let avg = self.frame_times_avg.count();
     let all_avg = self.frame_times_avg.all_count();
-    format!("camera {}\nmyworld {}\navgftw {:.2} navgft {:.2} ", camera_status, self.myworld, avg, all_avg)
+    format!(
+      "camera {}\nmyworld {}\navgftw {:.2} navgft {:.2} ",
+      camera_status, self.myworld, avg, all_avg
+    )
   }
 }
-

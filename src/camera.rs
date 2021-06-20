@@ -28,6 +28,8 @@ impl Camera {
           speed: 0.3,
           last_x: None,
           last_y: None,
+          last_wheel_x: None,
+          last_wheel_y: None,
           yaw: 0.0,
           pitch: 0.0,
         },

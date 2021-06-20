@@ -1,14 +1,18 @@
-use crate::input::CameraEnteredEvent;
 use crate::components::*;
-use crate::input::{GameEvent};
+use crate::input::CameraEnteredEvent;
+use crate::input::GameEvent;
 
-use bevy_ecs::event::{EventWriter};
+use bevy_ecs::event::EventWriter;
+use bevy_ecs::system::Query;
 use bevy_ecs::system::Res;
-use bevy_ecs::system::{Query};
 
 use cgmath::{Angle, InnerSpace, Rad, Vector3};
 
-pub fn camera_reacts_to_input(input_state: Res<InputState>, mut writer: EventWriter<GameEvent>, mut query: Query<(&mut Position, &mut CameraId)>) {
+pub fn camera_reacts_to_input(
+  input_state: Res<InputState>,
+  mut writer: EventWriter<GameEvent>,
+  mut query: Query<(&mut Position, &mut CameraId)>,
+) {
   for (mut position, mut camera) in query.iter_mut() {
     let mut moved = false;
     //let camera_speed = velocity.vec3;
@@ -48,7 +52,6 @@ pub fn camera_reacts_to_input(input_state: Res<InputState>, mut writer: EventWri
     );
     camera.front = direction.normalize();
     if moved {
-
       writer.send(GameEvent::Camera(CameraEnteredEvent {
         position: position.point3,
       }))
@@ -72,5 +75,15 @@ pub fn camera_reacts_to_input(input_state: Res<InputState>, mut writer: EventWri
     }
     camera.last_x = Some(input_state.mouse.position.x);
     camera.last_y = Some(input_state.mouse.position.y);
+    if let Some(last_wheel_x) = camera.last_wheel_x {
+      if let Some(last_wheel_y) = camera.last_wheel_y {
+        let diff_y = input_state.mouse.scroll_position.y - last_wheel_y;
+        let diff_x = input_state.mouse.scroll_position.x - last_wheel_x;
+        position.point3.x += diff_x;
+        position.point3.y += diff_y;
+      }
+    }
+    camera.last_wheel_x = Some(input_state.mouse.scroll_position.x);
+    camera.last_wheel_y = Some(input_state.mouse.scroll_position.y);
   }
 }

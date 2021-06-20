@@ -1,5 +1,5 @@
-use cgmath::{Vector3, Point3, Array, Point2};
 use bevy_ecs::bundle::Bundle;
+use cgmath::{Array, Point2, Point3, Vector3};
 
 #[derive()]
 pub struct Position {
@@ -35,6 +35,8 @@ pub struct CameraId {
   pub speed: f32,
   pub last_x: Option<f32>,
   pub last_y: Option<f32>,
+  pub last_wheel_x: Option<f32>,
+  pub last_wheel_y: Option<f32>,
 }
 
 impl Default for CameraId {
@@ -47,6 +49,8 @@ impl Default for CameraId {
       speed: 0.0,
       last_x: None,
       last_y: None,
+      last_wheel_x: None,
+      last_wheel_y: None,
     }
   }
 }
@@ -63,15 +67,14 @@ impl Default for Acceleration {
   }
 }
 
-impl Acceleration {
-}
+impl Acceleration {}
 
 #[derive(Bundle, Default)]
 pub struct CameraBundle {
-    pub camera: CameraId,
-    pub position: Position,
-    pub velocity: Velocity,
-    pub accel: Acceleration,
+  pub camera: CameraId,
+  pub position: Position,
+  pub velocity: Velocity,
+  pub accel: Acceleration,
 }
 
 #[derive(Default, Debug)]
@@ -91,12 +94,14 @@ pub struct KeyboardState {
 #[derive(Debug)]
 pub struct MouseState {
   pub position: Point2<f32>,
+  pub scroll_position: Point2<f32>,
 }
 
 impl Default for MouseState {
   fn default() -> MouseState {
     MouseState {
       position: Point2::from_value(0.0),
+      scroll_position: Point2::from_value(0.0),
     }
   }
 }
