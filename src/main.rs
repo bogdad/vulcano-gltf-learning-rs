@@ -227,15 +227,6 @@ fn main() {
   let event_loop = EventLoop::<GameEvent>::with_user_event();
   let graph = Graph::new(&event_loop);
 
-  /*let dynamic_state = DynamicState {
-      line_width: None,
-      viewports: None,
-      scissors: None,
-      compare_mask: None,
-      write_mask: None,
-      reference: None,
-  };*/
-
   let executor = Executor::new(thread_pool);
 
   let settings = Settings {

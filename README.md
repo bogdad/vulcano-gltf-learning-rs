@@ -5,6 +5,7 @@
 
 - [ ] how do we make terrain under the clouds
 - [ ] how do we make clouds transparent
+- [?] how do we move game loop from winit event loop
 - [x] how upgrading to vulkano 0.23 turns out very hard
 - [x] how do we notice a thing to improve in profile
 - [x] how do we profile
@@ -22,6 +23,10 @@
 - [x] how do we generate random "cloud like landcapes" on the fly
 - [ ] how do vertex normals work
 - [x] how do coordinate systems work
+
+## how do we move game loop from winit event loop
+
+currently game loop and winit event loop are the same, thats bad, need to be fixed
 
 ## how upgrading to vulkano 0.23 turns out very hard
 
