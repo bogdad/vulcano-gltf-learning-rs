@@ -1,7 +1,6 @@
 use crate::GameEvent;
 use cgmath::Point3;
 use profiling;
-use winit::event::{KeyboardInput, VirtualKeyCode};
 
 use bevy_ecs::event::ManualEventReader;
 

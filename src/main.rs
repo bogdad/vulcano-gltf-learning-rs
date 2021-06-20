@@ -1,4 +1,4 @@
-use crate::input::GameEvent;
+use crate::input::{GameEvent, MyKeyStatus};
 use vulkano::device::{Device, DeviceExtensions, Queue};
 use vulkano::format::Format;
 use vulkano::image::{ImageUsage, SwapchainImage};
@@ -12,7 +12,8 @@ use vulkano_text::DrawText;
 use vulkano_win::VkSurfaceBuild;
 
 use winit::dpi::PhysicalSize;
-use winit::event_loop::EventLoop;
+use winit::event::{ElementState, Event, WindowEvent};
+use winit::event_loop::{ControlFlow, EventLoop};
 use winit::window::{Window, WindowBuilder};
 
 extern crate futures;
@@ -23,7 +24,10 @@ extern crate vulkano_text;
 
 use futures::executor::ThreadPoolBuilder;
 
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::mpsc::channel;
 use std::sync::Arc;
+use std::sync::Mutex;
 
 mod actor;
 mod camera;
@@ -46,6 +50,7 @@ mod utils;
 
 use executor::Executor;
 use game::Game;
+use input::{InputEvent, MyKeyboardInput, MyMouseInput, MyMouseWheel};
 use render::Model;
 use settings::Settings;
 use shaders::{main, skybox};
@@ -66,7 +71,7 @@ pub struct Graph {
 }
 
 impl Graph {
-  fn new(event_loop: &EventLoop<GameEvent>) -> Graph {
+  fn new(event_loop: &EventLoop<()>) -> Graph {
     let required_extensions = vulkano_win::required_extensions();
     let instance = Instance::new(None, &required_extensions, vec![]).unwrap();
 
@@ -224,7 +229,7 @@ fn main() {
     });
   let thread_pool = thread_pool_builder.create().unwrap();
 
-  let event_loop = EventLoop::<GameEvent>::with_user_event();
+  let event_loop = EventLoop::<()>::new();
   let graph = Graph::new(&event_loop);
 
   let executor = Executor::new(thread_pool);
@@ -238,14 +243,77 @@ fn main() {
     lap_enabled: true,
   };
 
-  let mut game = Game::new(settings, executor, graph, &event_loop);
-  game.init();
+  let (send, recv) = channel();
 
-  event_loop.run(move |event, _, mut control_flow| {
+  let game_exited = Arc::new(AtomicBool::new(false));
+  let game_exited_clone = Arc::clone(&&game_exited);
+  let thread_handle = Arc::new(Mutex::new(Some(
+    std::thread::Builder::new()
+      .name(format!("gameloop"))
+      .spawn(move || {
+        let mut game = Game::new(settings, executor, graph, game_exited_clone, recv);
+        game.game_loop();
+      })
+      .unwrap(),
+  )));
+  let thread_handle_clone = Arc::clone(&thread_handle);
+
+  event_loop.run(move |event, _, control_flow| {
     profiling::scope!("event_loop");
-    game.tick();
-    let res = game.gloop(event, &mut control_flow);
-    profiling::finish_frame!();
-    res
+    if game_exited.load(Ordering::Acquire) {
+      println!("exiting..");
+      *control_flow = ControlFlow::Exit;
+    }
+    match event {
+      Event::WindowEvent {
+        event: WindowEvent::ModifiersChanged(modifiers),
+        ..
+      } => send
+        .send(InputEvent::KeyBoard(MyKeyboardInput::CmdPressed(
+          modifiers.logo(),
+        )))
+        .unwrap(),
+      Event::WindowEvent {
+        event: WindowEvent::CloseRequested,
+        ..
+      } => {
+        game_exited.store(true, Ordering::Release);
+        let mut thread_handle = thread_handle_clone.lock().unwrap();
+        thread_handle.take().unwrap().join().unwrap();
+        *control_flow = ControlFlow::Exit;
+      }
+      Event::WindowEvent {
+        event: WindowEvent::Resized(_),
+        ..
+      } => send.send(InputEvent::RecreateSwapchain {}).unwrap(),
+      Event::WindowEvent {
+        event: WindowEvent::KeyboardInput { input, .. },
+        ..
+      } => {
+        let status = match input.state {
+          ElementState::Released => MyKeyStatus::Released,
+          ElementState::Pressed => MyKeyStatus::Pressed,
+        };
+        send
+          .send(InputEvent::KeyBoard(MyKeyboardInput::Key {
+            key_code: input.virtual_keycode,
+            status,
+          }))
+          .unwrap();
+      }
+      Event::WindowEvent {
+        event: WindowEvent::MouseWheel { delta, .. },
+        ..
+      } => send
+        .send(InputEvent::MouseWheel(MyMouseWheel { delta }))
+        .unwrap(),
+      Event::WindowEvent {
+        event: WindowEvent::CursorMoved { position, .. },
+        ..
+      } => send
+        .send(InputEvent::MouseMoved(MyMouseInput { position }))
+        .unwrap(),
+      _ => (),
+    }
   });
 }

@@ -1,7 +1,8 @@
+use crate::input::GameEvent;
+use crate::input::GameWantsExitEvent;
 use crate::input::InputEvent;
-use crate::input::{GameEvent, MyKeyStatus};
-use crate::input::{GameWantsExitEvent, MyMouseWheel};
 use bevy_ecs::event::ManualEventReader;
+use bevy_ecs::prelude::EventReader;
 use cgmath::Point3;
 use profiling;
 use vulkano::command_buffer::{AutoCommandBufferBuilder, CommandBufferUsage, SubpassContents};
@@ -10,23 +11,19 @@ use vulkano::swapchain::AcquireError;
 use vulkano::sync;
 use vulkano::sync::{FlushError, GpuFuture};
 use vulkano_text::DrawTextTrait;
-use winit::event::ElementState;
-use winit::event::{Event, WindowEvent};
-use winit::event_loop::{ControlFlow, EventLoop};
 
 use std::boxed::Box;
+use std::mem::ManuallyDrop;
 use std::path::Path;
-use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::mpsc::Receiver;
 use std::sync::Arc;
-use std::thread::JoinHandle;
 use std::time::{Duration, Instant};
 use std::vec::Vec;
 
 use crate::camera::Camera;
 use crate::ecs::Ecs;
 use crate::executor::Executor;
-use crate::input::MyKeyboardInput;
-use crate::input::MyMouseInput;
 use crate::myworld::MyWorld;
 use crate::render::System;
 use crate::render::Textures;
@@ -34,7 +31,6 @@ use crate::sign_post::SignPost;
 use crate::sounds::Sounds;
 use crate::things::CountingWindowAvg;
 use crate::things::Lap;
-use crate::things::Signal;
 use crate::things::Texts;
 use crate::things::{PrimitiveCube, PrimitiveTriangle};
 use crate::Graph;
@@ -45,23 +41,23 @@ pub struct Game {
   ecs: Ecs,
   events_reader: Option<ManualEventReader<GameEvent>>,
 
+  system: System,
   camera: Camera,
   settings: Settings,
   graph: Graph,
+  sounds: Sounds,
 
   myworld: MyWorld,
-  sounds: Sounds,
   recreate_swapchain: bool,
-  models: Vec<Model>,
   previous_frame_end: Option<Box<dyn GpuFuture>>,
+  models: Vec<Model>,
   i_frame: u64,
-  last_frame_took: Arc<AtomicU32>,
-  frame_signal: Arc<Signal>,
-  system: System,
+  last_frame_took: u32,
+
   cmd_pressed: bool,
-  game_exited: Arc<AtomicBool>,
-  ticker_thread: Option<JoinHandle<()>>,
+  pub game_exited: Arc<AtomicBool>,
   frame_times_avg: CountingWindowAvg,
+  recv: Receiver<InputEvent>,
 }
 
 impl Game {
@@ -69,7 +65,8 @@ impl Game {
     settings: Settings,
     executor: Executor,
     graph: Graph,
-    event_loop: &EventLoop<GameEvent>,
+    game_exited: Arc<AtomicBool>,
+    recv: Receiver<InputEvent>,
   ) -> Game {
     let mut ecs = Ecs::new();
 
@@ -108,8 +105,6 @@ impl Game {
 
     let myworld = MyWorld::new(settings.clone(), executor, &graph, sign_posts);
 
-    let sounds = Sounds::new();
-
     let recreate_swapchain = false;
 
     let mut models = vec![];
@@ -140,69 +135,43 @@ impl Game {
 
     let previous_frame_end = Some(system_future);
 
-    let event_loop_proxy = event_loop.create_proxy();
-
-    let game_exited = Arc::new(AtomicBool::new(false));
-    let game_exited_local = Arc::clone(&game_exited);
-    let last_frame_took = Arc::new(AtomicU32::new(0));
-    let last_frame_took_clone = last_frame_took.clone();
-    let frame_signal = Arc::new(Signal::new());
-    let frame_signal_clone = frame_signal.clone();
-    let ticker_thread = Some(
-      std::thread::Builder::new()
-        .name(format!("ticker"))
-        .spawn(move || {
-          profiling::register_thread!("ticker");
-          while !game_exited_local.load(Ordering::Acquire) {
-            let last_frame_took = last_frame_took_clone.load(Ordering::Acquire);
-            // 1000 ms / 30 fps = 33 ms
-            let last_frame_took_duration = Duration::from_millis(last_frame_took as u64);
-            let interval = std::time::Duration::from_millis(33);
-            if interval > last_frame_took_duration {
-              profiling::scope!("sleeping");
-              let sleep = interval - last_frame_took_duration;
-              let now = Instant::now();
-              mysleep_until(now, now + sleep);
-            } else {
-              println!("last frame was {}", last_frame_took_duration.as_millis());
-            }
-            let result = event_loop_proxy.send_event(GameEvent::Draw());
-            match result {
-              Ok(()) => (),
-              Err(_) => {
-                break;
-              }
-            }
-            {
-              profiling::scope!("waiting for draw");
-              let _ = frame_signal_clone.wait_and_reset();
-            }
-          }
-        })
-        .unwrap(),
-    );
+    let last_frame_took = 0;
 
     let frame_times_avg = CountingWindowAvg::new(30);
+
+    let sounds = Sounds::new();
 
     Game {
       ecs,
       events_reader: None,
       settings,
       graph,
+      sounds,
       camera,
       myworld,
       recreate_swapchain,
-      models,
-      sounds,
-      system,
       previous_frame_end,
+      models,
+      system,
       i_frame: 0,
       last_frame_took,
-      frame_signal,
       cmd_pressed: false,
       game_exited,
-      ticker_thread,
       frame_times_avg,
+      recv,
+    }
+  }
+
+  #[profiling::function]
+  pub fn game_loop(&mut self) {
+    let events = self.ecs.get_events::<GameEvent>();
+    let mut reader = events.get_reader();
+    self.init();
+    while !self.game_exited.load(Ordering::Acquire) {
+      self.wait_for_frame();
+      self.accept_events(&mut reader);
+      self.tick();
+      self.draw();
     }
   }
 
@@ -355,8 +324,7 @@ impl Game {
     }
     let frame_end = Instant::now();
     let last_frame = (frame_end - frame_start).as_millis() as u32;
-    self.last_frame_took.store(last_frame, Ordering::Release);
-    self.frame_signal.signal();
+    self.last_frame_took = last_frame;
     self.frame_times_avg.add(last_frame);
   }
 
@@ -366,83 +334,41 @@ impl Game {
     self.ecs.tick();
   }
 
-  #[profiling::function]
-  pub fn gloop(&mut self, event: Event<GameEvent>, control_flow: &mut ControlFlow) {
-    *control_flow = ControlFlow::Wait;
-    let events = self.ecs.get_events::<GameEvent>();
-    for event in self.events_reader.as_mut().unwrap().iter(events) {
-      match event {
-        GameEvent::Game(GameWantsExitEvent {}) => {
-          self.game_exited.store(true, Ordering::Release);
-          *control_flow = ControlFlow::Exit;
+  pub fn accept_events(&mut self, game_event_reader: &mut ManualEventReader<GameEvent>) {
+    loop {
+      let events = self.ecs.get_events::<GameEvent>();
+      for event in game_event_reader.iter(events) {
+        match event {
+          GameEvent::Game(GameWantsExitEvent {}) => {
+            self.game_exited.store(true, Ordering::Release);
+          }
+          _ => {}
         }
-        _ => {}
+      }
+      let next = self.recv.try_recv();
+      if next.is_err() {
+        break;
+      }
+      let event = next.unwrap();
+      match event {
+        InputEvent::RecreateSwapchain => self.recreate_swapchain = true,
+        _ => self.ecs.get_events_mut().send(event),
       }
     }
-    match event {
-      Event::UserEvent(game_event) => match game_event {
-        GameEvent::Draw() => {
-          self.draw();
-        }
-        _ => (),
-      },
-      Event::WindowEvent {
-        event: WindowEvent::ModifiersChanged(modifiers),
-        ..
-      } => self
-        .ecs
-        .get_events_mut::<InputEvent>()
-        .send(InputEvent::KeyBoard(MyKeyboardInput::CmdPressed(
-          modifiers.logo(),
-        ))),
-      Event::WindowEvent {
-        event: WindowEvent::CloseRequested,
-        ..
-      } => {
-        self.game_exited.store(true, Ordering::Release);
-        *control_flow = ControlFlow::Exit;
-      }
-      Event::WindowEvent {
-        event: WindowEvent::Resized(_),
-        ..
-      } => {
-        self.recreate_swapchain = true;
-      }
-      Event::WindowEvent {
-        event: WindowEvent::KeyboardInput { input, .. },
-        ..
-      } => {
-        let status = match input.state {
-          ElementState::Released => MyKeyStatus::Released,
-          ElementState::Pressed => MyKeyStatus::Pressed,
-        };
-        self
-          .ecs
-          .get_events_mut::<InputEvent>()
-          .send(InputEvent::KeyBoard(MyKeyboardInput::Key {
-            key_code: input.virtual_keycode,
-            status,
-          }));
-      }
-      Event::WindowEvent {
-        event: WindowEvent::MouseWheel { delta, .. },
-        ..
-      } => {
-        self
-          .ecs
-          .get_events_mut::<InputEvent>()
-          .send(InputEvent::MouseWheel(MyMouseWheel { delta }));
-      }
-      Event::WindowEvent {
-        event: WindowEvent::CursorMoved { position, .. },
-        ..
-      } => {
-        self
-          .ecs
-          .get_events_mut::<InputEvent>()
-          .send(InputEvent::MouseMoved(MyMouseInput { position }));
-      }
-      _ => (),
+  }
+
+  pub fn wait_for_frame(&self) {
+    let last_frame_took = self.last_frame_took;
+    // 1000 ms / 30 fps = 33 ms
+    let last_frame_took_duration = Duration::from_millis(last_frame_took as u64);
+    let interval = std::time::Duration::from_millis(33);
+    if interval > last_frame_took_duration {
+      profiling::scope!("sleeping");
+      let sleep = interval - last_frame_took_duration;
+      let now = Instant::now();
+      mysleep_until(now, now + sleep);
+    } else {
+      println!("last frame was {}", last_frame_took_duration.as_millis());
     }
   }
 

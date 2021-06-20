@@ -39,6 +39,7 @@ pub enum InputEvent {
   KeyBoard(MyKeyboardInput),
   MouseMoved(MyMouseInput),
   MouseWheel(MyMouseWheel),
+  RecreateSwapchain,
 }
 
 pub enum GameEvent {
