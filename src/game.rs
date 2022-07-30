@@ -26,7 +26,7 @@ use crate::myworld::MyWorld;
 use crate::render::System;
 use crate::render::Textures;
 use crate::sign_post::SignPost;
-use crate::sounds::Sounds;
+use crate::sounds::{Sounds, NoSounds};
 use crate::things::CountingWindowAvg;
 use crate::things::Lap;
 use crate::things::Texts;
@@ -43,7 +43,7 @@ pub struct Game {
   camera: Camera,
   settings: Settings,
   graph: Graph,
-  sounds: Sounds,
+  sounds: Box<dyn Sounds>,
 
   myworld: MyWorld,
   recreate_swapchain: bool,
@@ -136,7 +136,7 @@ impl Game {
 
     let frame_times_avg = CountingWindowAvg::new(30);
 
-    let sounds = Sounds::new();
+    let sounds = Box::new(NoSounds::new());
 
     Game {
       ecs,

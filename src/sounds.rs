@@ -3,13 +3,17 @@ use rodio::{source::Source, Decoder, OutputStream, OutputStreamHandle};
 use std::fs::File;
 use std::io::BufReader;
 
-pub struct Sounds {
+pub trait Sounds {
+  fn play(&mut self);
+}
+
+pub struct DefaultSounds {
   stream: OutputStream,
   stream_handle: OutputStreamHandle,
   sources: Vec<Decoder<BufReader<File>>>,
 }
 
-impl Sounds {
+impl DefaultSounds {
   pub fn new() -> Self {
     let mut sources = vec![];
 
@@ -21,14 +25,16 @@ impl Sounds {
     let source = Decoder::new(file).unwrap();
     sources.push(source);
 
-    Sounds {
+    DefaultSounds {
       stream,
       stream_handle,
       sources,
     }
   }
+}
 
-  pub fn play(&mut self) {
+impl Sounds for DefaultSounds {
+  fn play(&mut self) {
     while !self.sources.is_empty() {
       let source = self.sources.remove(0);
       self
@@ -36,5 +42,19 @@ impl Sounds {
         .play_raw(source.convert_samples())
         .unwrap();
     }
+  }
+}
+
+pub struct NoSounds {
+}
+
+impl NoSounds {
+  pub fn new() -> NoSounds {
+    NoSounds{}
+  }
+}
+
+impl Sounds for NoSounds {
+  fn play(&mut self) {
   }
 }

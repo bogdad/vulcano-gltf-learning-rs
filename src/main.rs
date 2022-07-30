@@ -237,7 +237,7 @@ fn main() {
   let settings = Settings {
     sky_enabled: true,
     box_enabled: true,
-    dog_enabled: true,
+    dog_enabled: false,
     letters_enabled: true,
     triangle_enabled: true,
     lap_enabled: true,
@@ -256,14 +256,16 @@ fn main() {
       })
       .unwrap(),
   )));
-  let thread_handle_clone = Arc::clone(&thread_handle);
+  //let thread_handle_clone = Arc::clone(&thread_handle);
 
   event_loop.run(move |event, _, control_flow| {
     profiling::scope!("event_loop");
+    println!("got event {:?}", event);
     if game_exited.load(Ordering::Acquire) {
       println!("exiting..");
       *control_flow = ControlFlow::Exit;
-    }
+      return;
+    } 
     match event {
       Event::WindowEvent {
         event: WindowEvent::ModifiersChanged(modifiers),
@@ -278,7 +280,7 @@ fn main() {
         ..
       } => {
         game_exited.store(true, Ordering::Release);
-        let mut thread_handle = thread_handle_clone.lock().unwrap();
+        let mut thread_handle = thread_handle.lock().unwrap();
         thread_handle.take().unwrap().join().unwrap();
         *control_flow = ControlFlow::Exit;
       }
@@ -316,4 +318,6 @@ fn main() {
       _ => (),
     }
   });
+  
+
 }
